@@ -5,6 +5,8 @@ namespace Platformsh\Client;
 use GuzzleHttp\Exception\BadResponseException;
 use Platformsh\Client\Connection\Connector;
 use Platformsh\Client\Connection\ConnectorInterface;
+use Platformsh\Client\DataStructure\Collection;
+use Platformsh\Client\Fetcher\CollectionFetcher;
 use Platformsh\Client\Exception\ApiResponseException;
 use Platformsh\Client\Model\Billing\PlanRecord;
 use Platformsh\Client\Model\Billing\PlanRecordQuery;
@@ -282,7 +284,9 @@ class PlatformClient
      */
     public function getSubscriptions()
     {
-        $url = $this->accountsEndpoint . 'subscriptions';
+        $url = $this->accountsEndpoint.'subscriptions';
+
+        // @todo: make the limit useful
         return Subscription::getCollection($url, 0, [], $this->connector->getClient());
     }
 

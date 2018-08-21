@@ -6,15 +6,21 @@ use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\BadResponseException;
 use GuzzleHttp\Psr7\Request;
+use Platformsh\Client\DataStructure\ApiCollection;
 use Psr\Http\Message\RequestInterface;
 use Platformsh\Client\Exception\ApiResponseException;
 use Platformsh\Client\Exception\OperationUnavailableException;
+use Platformsh\Client\DataStructure\Collection;
+use Platformsh\Client\Fetcher\CollectionFetcher;
+use Platformsh\Client\Fetcher\Fetcher;
 
 /**
  * The base class for API resources.
  */
 abstract class ApiResourceBase implements \ArrayAccess
 {
+
+    const COLLECTION_NAME = NULL;
 
     /** @var array */
     protected static $required = [];
@@ -164,15 +170,15 @@ abstract class ApiResourceBase implements \ArrayAccess
      */
     public static function get($id, $collectionUrl = null, ClientInterface $client)
     {
+        $url = $collectionUrl ? rtrim($collectionUrl, '/').'/'.urlencode($id) : $id;
         try {
-            $url = $collectionUrl ? rtrim($collectionUrl, '/') . '/' . urlencode($id) : $id;
-            $request = new Request('get', $url);
-            $data = self::send($request, $client);
+            $fetcher = new Fetcher(static::class, $url, $client, []);
 
-            return new static($data, $url, $client, true);
+            return $fetcher->fetch();
         } catch (BadResponseException $e) {
             $response = $e->getResponse();
-            if ($response && $response->getStatusCode() === 404) {
+            // The API may throw either 404 (not found) or 422 (the requested entity id does not exist).
+            if ($response && in_array($response->getStatusCode(), [404, 422])) {
                 return false;
             }
             throw $e;
@@ -211,6 +217,7 @@ abstract class ApiResourceBase implements \ArrayAccess
      * @param array            $options
      *
      * @internal
+     * @deprecated
      *
      * @return array
      */
@@ -309,19 +316,9 @@ abstract class ApiResourceBase implements \ArrayAccess
      */
     public static function getCollection($url, $limit = 0, array $options = [], ClientInterface $client)
     {
-        // @todo uncomment this when the API implements a 'count' parameter
-        // if ($limit) {
-            // $options['query']['count'] = $limit;
-        // }
-        $request = new Request('get', $url);
-        $data = self::send($request, $client, $options);
+        $fetcher = new CollectionFetcher(static::class, $url, $client, $options);
 
-        // @todo remove this when the API implements a 'count' parameter
-        if ($limit) {
-            $data = array_slice($data, 0, $limit);
-        }
-
-        return static::wrapCollection($data, $url, $client);
+        return new Collection($fetcher);
     }
 
     /**
@@ -333,16 +330,29 @@ abstract class ApiResourceBase implements \ArrayAccess
      * @param string          $baseUrl The URL to the collection.
      * @param ClientInterface $client  A suitably configured Guzzle client.
      *
-     * @return static[]
+     * @deprecated
+     *
+     * @return ResourceCollection
      */
-    public static function wrapCollection(array $data, $baseUrl, ClientInterface $client)
+    public static function wrapCollection(array $data, $baseUrl, ClientInterface $client, $page = 1)
     {
-        $resources = [];
-        foreach ($data as $item) {
-            $resources[] = new static($item, $baseUrl, $client);
+        $collection_name = static::COLLECTION_NAME;
+
+        if ($collection_name && isset($data[$collection_name])) {
+            $items = $data[$collection_name];
+            $count = $data['count'];
+        } else {
+            $items = $data;
+            $count = count($data);
         }
 
-        return $resources;
+        $collection = new ResourceCollection($count, $page);
+
+        foreach ($items as $item) {
+            $collection->push(new static($item, $baseUrl, $client));
+        }
+
+        return $collection;
     }
 
     /**

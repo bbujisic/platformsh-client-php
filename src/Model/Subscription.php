@@ -34,6 +34,8 @@ class Subscription extends ApiResourceBase
     const STATUS_SUSPENDED = 'suspended';
     const STATUS_DELETED = 'deleted';
 
+    const COLLECTION_NAME = 'subscriptions';
+
     /**
      * {@inheritdoc}
      *
@@ -157,15 +159,6 @@ class Subscription extends ApiResourceBase
     {
         $data = isset($data['subscriptions'][0]) ? $data['subscriptions'][0] : $data;
         $this->data = $data;
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public static function wrapCollection(array $data, $baseUrl, ClientInterface $client)
-    {
-        $data = isset($data['subscriptions']) ? $data['subscriptions'] : [];
-        return parent::wrapCollection($data, $baseUrl, $client);
     }
 
     /**
