@@ -9,7 +9,7 @@ use Platformsh\Client\Fetcher\CollectionFetcher;
  * results from a given fetcher class, once it reaches the end of
  * the stored values.
  */
-class Collection implements \Iterator
+class Collection implements \Iterator, \Countable
 {
 
     // Current position in the collection of items.
@@ -23,6 +23,22 @@ class Collection implements \Iterator
     {
         $this->fetcher = $fetcher;
         $this->collection = $fetcher->fetch();
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function count(): int
+    {
+        return $this->fetcher->countRemote();
+    }
+
+    /**
+     * Count locally available items.
+     */
+    public function countFetched(): int
+    {
+        return count($this->collection);
     }
 
     /**

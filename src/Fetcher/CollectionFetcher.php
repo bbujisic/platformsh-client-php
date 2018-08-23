@@ -33,6 +33,10 @@ class CollectionFetcher extends Fetcher
         return $this->currentPage;
     }
 
+    public function countRemote() {
+        return $this->countRemote;
+    }
+
     private function fetchPage($page)
     {
         $options = $this->options;
