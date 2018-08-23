@@ -7,6 +7,8 @@ use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\BadResponseException;
 use GuzzleHttp\Psr7\Request;
 use Platformsh\Client\DataStructure\ApiCollection;
+use Platformsh\Client\PlatformClient;
+use Platformsh\Client\Query\QueryInterface;
 use Psr\Http\Message\RequestInterface;
 use Platformsh\Client\Exception\ApiResponseException;
 use Platformsh\Client\Exception\OperationUnavailableException;
@@ -21,6 +23,7 @@ abstract class ApiResourceBase implements \ArrayAccess
 {
 
     const COLLECTION_NAME = NULL;
+    const COLLECTION_PATH = NULL;
 
     /** @var array */
     protected static $required = [];
@@ -159,20 +162,16 @@ abstract class ApiResourceBase implements \ArrayAccess
     /**
      * Get a resource by its ID.
      *
-     * @param string          $id            The ID of the resource, or the
-     *                                       full URL.
-     * @param string          $collectionUrl The URL of the collection.
-     * @param ClientInterface $client        A suitably configured Guzzle
-     *                                       client.
+     * @param PlatformClient $client  A suitably configured Platform client.
+     * @param string|int     $id      The ID of the resource.
      *
-     * @return static|false The resource object, or false if the resource is
-     *                      not found.
+     * @return static|false The resource object, or false if the resource is not found.
      */
-    public static function get($id, $collectionUrl = null, ClientInterface $client)
+    public static function get(PlatformClient $client, $id)
     {
-        $url = $collectionUrl ? rtrim($collectionUrl, '/').'/'.urlencode($id) : $id;
+        $url = $client->getConnector()->getAccountsEndpoint().static::COLLECTION_PATH;
         try {
-            $fetcher = new Fetcher(static::class, $url, $client, []);
+            $fetcher = new Fetcher(static::class, $url, $client->getConnector()->getClient(), []);
 
             return $fetcher->fetch();
         } catch (BadResponseException $e) {
@@ -305,18 +304,19 @@ abstract class ApiResourceBase implements \ArrayAccess
     /**
      * Get a collection of resources.
      *
-     * @param string          $url     The collection URL.
-     * @param int             $limit   A limit on the number of resources to
-     *                                 return.
-     * @param array           $options An array of additional Guzzle request
-     *                                 options.
-     * @param ClientInterface $client  A suitably configured Guzzle client.
+     * @param PlatformClient $client  A suitably configured Platform client.
+     * @param QueryInterface $query   An instance of query interface. It will be used to build a guzzle query.
      *
-     * @return static[]
+     * @return Collection;
      */
-    public static function getCollection($url, $limit = 0, array $options = [], ClientInterface $client)
+    public static function getCollection(PlatformClient $client, ?QueryInterface $query = null)
     {
-        $fetcher = new CollectionFetcher(static::class, $url, $client, $options);
+        $url = $client->getConnector()->getAccountsEndpoint().static::COLLECTION_PATH;
+        $options = [];
+        if ($query) {
+            $options['query'] = $query->getParams();
+        }
+        $fetcher = new CollectionFetcher(static::class, $url, $client->getConnector()->getClient(), $options);
 
         return new Collection($fetcher);
     }

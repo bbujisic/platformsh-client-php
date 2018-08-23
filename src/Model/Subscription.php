@@ -34,7 +34,9 @@ class Subscription extends ApiResourceBase
     const STATUS_SUSPENDED = 'suspended';
     const STATUS_DELETED = 'deleted';
 
+    // @todo: Move these constants to methods, so that they can be documented in an appropriate interface.
     const COLLECTION_NAME = 'subscriptions';
+    const COLLECTION_PATH = 'subscriptions';
 
     /**
      * {@inheritdoc}

@@ -285,19 +285,9 @@ class PlatformClient
      */
     public function getSubscriptions(?SubscriptionQuery $query = null): Collection
     {
-        $url = $this->accountsEndpoint.'subscriptions';
-        $options = [];
-
-        if ($query) {
-            $options['query'] = $query->getParams();
-        }
 
         // @todo: make the limit useful
-        // @todo: Do we want to move guzzle to the next level of abstraction? I.e. to inject the entire PlatformClient
-        //        into Subscription::getCollection, and let it figure out the connection and URL.
-        //        Ideal design would be Subscription::getCollection($this, $query, $limit);
-        //        or even Subscription::getCollection($this, $query), where limit would be a part of the query.
-        return Subscription::getCollection($url, 0, $options, $this->connector->getClient());
+        return Subscription::getCollection($this, $query);
     }
 
     /**
@@ -305,8 +295,7 @@ class PlatformClient
      */
     public function getSubscription(int $id): ?Subscription
     {
-        $url = $this->accountsEndpoint . 'subscriptions';
-        return Subscription::get($id, $url, $this->connector->getClient());
+        return Subscription::get($this, $id);
     }
 
     /**
