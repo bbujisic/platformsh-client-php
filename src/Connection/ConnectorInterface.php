@@ -66,4 +66,17 @@ interface ConnectorInterface
      * @return string
      */
     public function getAccountsEndpoint();
+
+    /**
+     * Send a Guzzle request.
+     *
+     * Using this method allows exceptions to be standardized.
+     *
+     * @param   string  $resourcePath   Path to the resource.
+     * @param   string  $method         HTTP request method
+     * @param   array   $options        Guzzle options
+     *
+     * @return  array
+     */
+    public function send($resourcePath, $method = 'get', $options = []);
 }

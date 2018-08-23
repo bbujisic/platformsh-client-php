@@ -13,8 +13,6 @@ use Psr\Http\Message\RequestInterface;
 use Platformsh\Client\Exception\ApiResponseException;
 use Platformsh\Client\Exception\OperationUnavailableException;
 use Platformsh\Client\DataStructure\Collection;
-use Platformsh\Client\Fetcher\CollectionFetcher;
-use Platformsh\Client\Fetcher\Fetcher;
 
 /**
  * The base class for API resources.
@@ -170,10 +168,12 @@ abstract class ApiResourceBase implements \ArrayAccess
     public static function get(PlatformClient $client, $id)
     {
         $url = $client->getConnector()->getAccountsEndpoint().static::COLLECTION_PATH;
-        try {
-            $fetcher = new Fetcher(static::class, $url, $client->getConnector()->getClient(), []);
 
-            return $fetcher->fetch();
+        try {
+            $data = $client->getConnector()->send(static::COLLECTION_PATH);
+
+            // @todo: next level: remove url and guzzle client from the constructor. PlatformClient should be enough.
+            return new static($data, $url, $client->getConnector()->getClient(), true);
         } catch (BadResponseException $e) {
             $response = $e->getResponse();
             // The API may throw either 404 (not found) or 422 (the requested entity id does not exist).
@@ -222,6 +222,7 @@ abstract class ApiResourceBase implements \ArrayAccess
      */
     public static function send(RequestInterface $request, ClientInterface $client, array $options = [])
     {
+        // @todo: delete me!!!!
         $response = null;
         try {
             $response = $client->send($request, $options);
@@ -311,14 +312,7 @@ abstract class ApiResourceBase implements \ArrayAccess
      */
     public static function getCollection(PlatformClient $client, ?QueryInterface $query = null)
     {
-        $url = $client->getConnector()->getAccountsEndpoint().static::COLLECTION_PATH;
-        $options = [];
-        if ($query) {
-            $options['query'] = $query->getParams();
-        }
-        $fetcher = new CollectionFetcher(static::class, $url, $client->getConnector()->getClient(), $options);
-
-        return new Collection($fetcher);
+        return new Collection(static::class, $client, $query);
     }
 
     /**
@@ -361,6 +355,8 @@ abstract class ApiResourceBase implements \ArrayAccess
      * @param string $op
      * @param string $method
      * @param array  $body
+     *
+     * // HUH?!
      *
      * @return Result
      */

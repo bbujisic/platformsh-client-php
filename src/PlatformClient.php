@@ -6,7 +6,6 @@ use GuzzleHttp\Exception\BadResponseException;
 use Platformsh\Client\Connection\Connector;
 use Platformsh\Client\Connection\ConnectorInterface;
 use Platformsh\Client\DataStructure\Collection;
-use Platformsh\Client\Fetcher\CollectionFetcher;
 use Platformsh\Client\Exception\ApiResponseException;
 use Platformsh\Client\Model\Billing\PlanRecord;
 use Platformsh\Client\Model\Project;

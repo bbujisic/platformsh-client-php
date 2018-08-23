@@ -2,12 +2,12 @@
 
 namespace Platformsh\Client\DataStructure;
 
-use Platformsh\Client\Fetcher\CollectionFetcher;
+use Platformsh\Client\PlatformClient;
+use Platformsh\Client\Query\QueryInterface;
 
 /**
- * An iterable structure which allows lazy loading of a new set of
- * results from a given fetcher class, once it reaches the end of
- * the stored values.
+ * An iterable structure which lazy loads a new set of results
+ * once it reaches the end of the locally stored values.
  */
 class Collection implements \Iterator, \Countable
 {
@@ -16,21 +16,68 @@ class Collection implements \Iterator, \Countable
     private $position = 0;
     // The collection of items.
     private $collection = [];
-    // The fetcher class handles API requests and returns prepared objects.
-    private $fetcher;
 
-    public function __construct(CollectionFetcher $fetcher)
+
+    // Page management
+    private $currentPage = 1;
+    private $hasNextPage = true;
+    // Total number of results.
+    private $countRemote = 0;
+
+
+    // Resource object name.
+    private $resourceObjectName;
+    // Guzzle options.
+    private $options = [];
+    // Connector.
+    private $connector;
+
+
+    public function __construct(string $resourceObjectName, PlatformClient $client, QueryInterface $query = null)
     {
-        $this->fetcher = $fetcher;
-        $this->collection = $fetcher->fetch();
+        $this->connector = $client->getConnector();
+        $this->resourceObjectName = $resourceObjectName;
+
+        if ($query) {
+            $this->options['query'] = $query->getParams();
+        }
+
+        $this->fetch(1);
     }
+
+    protected function fetch($page = 1)
+    {
+        // Bail out early.
+        if (!$this->hasNextPage) {
+            return false;
+        }
+
+        $class = $this->resourceObjectName;
+        $options = $this->options;
+        $options['query']['page'] = $page;
+
+        $data = $this->connector->send($class::COLLECTION_PATH, 'get', $options);
+
+        $url = $this->connector->getAccountsEndpoint().$class::COLLECTION_PATH;
+        $client = $this->connector->getClient();
+        foreach ($data[$class::COLLECTION_NAME] as $resourceItem) {
+            $this->collection[] = new $class($resourceItem, $url, $client);
+        }
+
+        $this->countRemote = $data['count'];
+        $this->hasNextPage = (isset($data['_links']['next']) ? true : false);
+        $this->currentPage = $page;
+
+        return true;
+    }
+
 
     /**
      * {@inheritdoc}
      */
     public function count(): int
     {
-        return $this->fetcher->countRemote();
+        return $this->countRemote;
     }
 
     /**
@@ -78,11 +125,9 @@ class Collection implements \Iterator, \Countable
      */
     public function valid()
     {
-        // If no items remain in collectiom, ask the fetcher for a new batch.
+        // If no items remain in collectiom, fetch a new batch.
         if (!isset($this->collection[$this->position])) {
-            if ($newCollection = $this->fetcher->fetch()) {
-                $this->collection = array_merge($this->collection, $newCollection);
-            }
+            $this->fetch(++$this->currentPage);
         }
 
         return isset($this->collection[$this->position]);
