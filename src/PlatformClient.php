@@ -9,12 +9,13 @@ use Platformsh\Client\DataStructure\Collection;
 use Platformsh\Client\Fetcher\CollectionFetcher;
 use Platformsh\Client\Exception\ApiResponseException;
 use Platformsh\Client\Model\Billing\PlanRecord;
-use Platformsh\Client\Model\Billing\PlanRecordQuery;
 use Platformsh\Client\Model\Project;
 use Platformsh\Client\Model\Region;
 use Platformsh\Client\Model\Result;
 use Platformsh\Client\Model\SshKey;
 use Platformsh\Client\Model\Subscription;
+use Platformsh\Client\Query\PlanRecordQuery;
+use Platformsh\Client\Query\SubscriptionQuery;
 
 class PlatformClient
 {
@@ -282,22 +283,27 @@ class PlatformClient
      *
      * @return Subscription[]
      */
-    public function getSubscriptions()
+    public function getSubscriptions(?SubscriptionQuery $query = null): Collection
     {
         $url = $this->accountsEndpoint.'subscriptions';
+        $options = [];
+
+        if ($query) {
+            $options['query'] = $query->getParams();
+        }
 
         // @todo: make the limit useful
-        return Subscription::getCollection($url, 0, [], $this->connector->getClient());
+        // @todo: Do we want to move guzzle to the next level of abstraction? I.e. to inject the entire PlatformClient
+        //        into Subscription::getCollection, and let it figure out the connection and URL.
+        //        Ideal design would be Subscription::getCollection($this, $query, $limit);
+        //        or even Subscription::getCollection($this, $query), where limit would be a part of the query.
+        return Subscription::getCollection($url, 0, $options, $this->connector->getClient());
     }
 
     /**
      * Get a subscription by its ID.
-     *
-     * @param string|int $id
-     *
-     * @return Subscription|false
      */
-    public function getSubscription($id)
+    public function getSubscription(int $id): ?Subscription
     {
         $url = $this->accountsEndpoint . 'subscriptions';
         return Subscription::get($id, $url, $this->connector->getClient());
