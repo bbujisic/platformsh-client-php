@@ -14,6 +14,7 @@ use Platformsh\Client\Model\Result;
 use Platformsh\Client\Model\SshKey;
 use Platformsh\Client\Model\Subscription;
 use Platformsh\Client\Query\PlanRecordQuery;
+use Platformsh\Client\Query\RegionQuery;
 use Platformsh\Client\Query\SubscriptionQuery;
 
 class PlatformClient
@@ -326,9 +327,9 @@ class PlatformClient
      *
      * @return Region[]
      */
-    public function getRegions()
+    public function getRegions(RegionQuery $query = null): Collection
     {
-        return Region::getCollection($this->accountsEndpoint . 'regions', 0, [], $this->getConnector()->getClient());
+        return Region::getCollection($this, $query);
     }
 
     /**
