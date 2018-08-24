@@ -262,7 +262,7 @@ class PlatformClient
      *   similar code to wait for the subscription's project to be provisioned
      *   and activated.
      */
-    public function createSubscription($region, $plan = 'development', $title = null, $storage = null, $environments = null, array $activationCallback = null)
+    public function createSubscription($region, $plan = 'development', $title = null, $storage = null, $environments = null, array $activationCallback = null): Subscription
     {
         $url = $this->accountsEndpoint . 'subscriptions';
         $values = $this->cleanRequest([
@@ -274,7 +274,7 @@ class PlatformClient
           'activation_callback' => $activationCallback,
         ]);
 
-        return Subscription::create($values, $url, $this->connector->getClient());
+        return Subscription::create($this, $values);
     }
 
     /**
@@ -284,8 +284,6 @@ class PlatformClient
      */
     public function getSubscriptions(?SubscriptionQuery $query = null): Collection
     {
-
-        // @todo: make the limit useful
         return Subscription::getCollection($this, $query);
     }
 
@@ -307,7 +305,7 @@ class PlatformClient
      *
      * @return array An array containing at least 'total' (a formatted price).
      */
-    public function getSubscriptionEstimate($plan, $storage, $environments, $users)
+    public function getSubscriptionEstimate(string $plan, int $storage, int $environments, int $users): array
     {
         $options = [];
         $options['query'] = [

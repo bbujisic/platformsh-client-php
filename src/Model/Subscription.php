@@ -3,6 +3,7 @@
 namespace Platformsh\Client\Model;
 
 use GuzzleHttp\ClientInterface;
+use Platformsh\Client\PlatformClient;
 
 /**
  * Represents a Platform.sh subscription.
@@ -47,11 +48,12 @@ class Subscription extends ApiResourceBase
      *
      * @return static
      */
-    public static function create(array $body, $collectionUrl, ClientInterface $client)
+    public static function create(PlatformClient $client, array $body)
     {
-        $result = parent::create($body, $collectionUrl, $client);
+        $result = parent::create($client, $body);
 
-        return new Subscription($result->getData(), $collectionUrl, $client);
+        $collectionUrl = $client->getConnector()->getAccountsEndpoint().static::COLLECTION_PATH;
+        return new Subscription($result->getData(), $collectionUrl, $client->getConnector()->getClient());
     }
 
     /**

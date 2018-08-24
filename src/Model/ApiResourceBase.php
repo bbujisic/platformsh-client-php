@@ -185,25 +185,39 @@ abstract class ApiResourceBase implements \ArrayAccess
     }
 
     /**
+     * Get a collection of resources.
+     *
+     * @param PlatformClient $client  A suitably configured Platform client.
+     * @param QueryInterface $query   An instance of query interface. It will be used to build a guzzle query.
+     *
+     * @return Collection;
+     */
+    public static function getCollection(PlatformClient $client, ?QueryInterface $query = null)
+    {
+        return new Collection(static::class, $client, $query);
+    }
+
+    /**
      * Create a resource.
      *
+     * @param PlatformClient  $client
      * @param array           $body
-     * @param string          $collectionUrl
-     * @param ClientInterface $client
      *
      * @return Result
      */
-    public static function create(array $body, $collectionUrl, ClientInterface $client)
+    public static function create(PlatformClient $client, array $body)
     {
         if ($errors = static::checkNew($body)) {
             $message = "Cannot create resource due to validation error(s): " . implode('; ', $errors);
             throw new \InvalidArgumentException($message);
         }
 
-        $request = new Request('post', $collectionUrl, [], \GuzzleHttp\json_encode($body));
-        $data = self::send($request, $client);
+        $url = $client->getConnector()->getAccountsEndpoint().static::COLLECTION_PATH;
+        $request = new Request('post', $url, [], \GuzzleHttp\json_encode($body));
 
-        return new Result($data, $collectionUrl, $client, get_called_class());
+        $data = $client->getConnector()->sendRequest($request);
+
+        return new Result($data, $url, $client->getConnector()->getClient(), get_called_class());
     }
 
     /**
@@ -300,19 +314,6 @@ abstract class ApiResourceBase implements \ArrayAccess
     protected static function checkProperty($property, $value)
     {
         return [];
-    }
-
-    /**
-     * Get a collection of resources.
-     *
-     * @param PlatformClient $client  A suitably configured Platform client.
-     * @param QueryInterface $query   An instance of query interface. It will be used to build a guzzle query.
-     *
-     * @return Collection;
-     */
-    public static function getCollection(PlatformClient $client, ?QueryInterface $query = null)
-    {
-        return new Collection(static::class, $client, $query);
     }
 
     /**

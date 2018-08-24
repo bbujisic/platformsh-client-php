@@ -286,7 +286,6 @@ class Connector implements ConnectorInterface
         return $this->client;
     }
 
-
     /**
      * {@inheritdoc}
      */
@@ -294,6 +293,10 @@ class Connector implements ConnectorInterface
 
         $request = new Request($method, $this->getAccountsEndpoint().$resourcePath);
 
+        return $this->sendRequest($request, $options);
+    }
+
+    public function sendRequest(Request $request, $options = []) {
         $response = null;
         try {
             $response = $this->getClient()->send($request, $options);
