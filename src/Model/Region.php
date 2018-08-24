@@ -16,6 +16,10 @@ use GuzzleHttp\ClientInterface;
  */
 class Region extends ApiResourceBase
 {
+    // @todo: Move these constants to methods, so that they can be documented in an appropriate interface.
+    const COLLECTION_NAME = 'regions';
+    const COLLECTION_PATH = 'regions';
+
     /**
      * @inheritdoc
      */
@@ -25,16 +29,6 @@ class Region extends ApiResourceBase
         $data['available'] = !empty($data['available']);
         $data['private'] = !empty($data['private']);
         $this->data = $data;
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public static function wrapCollection(array $data, $baseUrl, ClientInterface $client)
-    {
-        $data = isset($data['regions']) ? $data['regions'] : [];
-
-        return parent::wrapCollection($data, $baseUrl, $client);
     }
 
     /**

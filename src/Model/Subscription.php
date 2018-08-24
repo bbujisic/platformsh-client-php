@@ -3,6 +3,7 @@
 namespace Platformsh\Client\Model;
 
 use GuzzleHttp\ClientInterface;
+use Platformsh\Client\PlatformClient;
 
 /**
  * Represents a Platform.sh subscription.
@@ -34,6 +35,10 @@ class Subscription extends ApiResourceBase
     const STATUS_SUSPENDED = 'suspended';
     const STATUS_DELETED = 'deleted';
 
+    // @todo: Move these constants to methods, so that they can be documented in an appropriate interface.
+    const COLLECTION_NAME = 'subscriptions';
+    const COLLECTION_PATH = 'subscriptions';
+
     /**
      * {@inheritdoc}
      *
@@ -43,11 +48,12 @@ class Subscription extends ApiResourceBase
      *
      * @return static
      */
-    public static function create(array $body, $collectionUrl, ClientInterface $client)
+    public static function create(PlatformClient $client, array $body)
     {
-        $result = parent::create($body, $collectionUrl, $client);
+        $result = parent::create($client, $body);
 
-        return new Subscription($result->getData(), $collectionUrl, $client);
+        $collectionUrl = $client->getConnector()->getAccountsEndpoint().static::COLLECTION_PATH;
+        return new Subscription($result->getData(), $collectionUrl, $client->getConnector()->getClient());
     }
 
     /**
@@ -157,15 +163,6 @@ class Subscription extends ApiResourceBase
     {
         $data = isset($data['subscriptions'][0]) ? $data['subscriptions'][0] : $data;
         $this->data = $data;
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public static function wrapCollection(array $data, $baseUrl, ClientInterface $client)
-    {
-        $data = isset($data['subscriptions']) ? $data['subscriptions'] : [];
-        return parent::wrapCollection($data, $baseUrl, $client);
     }
 
     /**

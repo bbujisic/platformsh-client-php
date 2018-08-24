@@ -6,15 +6,22 @@ use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\BadResponseException;
 use GuzzleHttp\Psr7\Request;
+use Platformsh\Client\DataStructure\ApiCollection;
+use Platformsh\Client\PlatformClient;
+use Platformsh\Client\Query\QueryInterface;
 use Psr\Http\Message\RequestInterface;
 use Platformsh\Client\Exception\ApiResponseException;
 use Platformsh\Client\Exception\OperationUnavailableException;
+use Platformsh\Client\DataStructure\Collection;
 
 /**
  * The base class for API resources.
  */
 abstract class ApiResourceBase implements \ArrayAccess
 {
+
+    const COLLECTION_NAME = NULL;
+    const COLLECTION_PATH = NULL;
 
     /** @var array */
     protected static $required = [];
@@ -153,26 +160,24 @@ abstract class ApiResourceBase implements \ArrayAccess
     /**
      * Get a resource by its ID.
      *
-     * @param string          $id            The ID of the resource, or the
-     *                                       full URL.
-     * @param string          $collectionUrl The URL of the collection.
-     * @param ClientInterface $client        A suitably configured Guzzle
-     *                                       client.
+     * @param PlatformClient $client  A suitably configured Platform client.
+     * @param string|int     $id      The ID of the resource.
      *
-     * @return static|false The resource object, or false if the resource is
-     *                      not found.
+     * @return static|false The resource object, or false if the resource is not found.
      */
-    public static function get($id, $collectionUrl = null, ClientInterface $client)
+    public static function get(PlatformClient $client, $id)
     {
-        try {
-            $url = $collectionUrl ? rtrim($collectionUrl, '/') . '/' . urlencode($id) : $id;
-            $request = new Request('get', $url);
-            $data = self::send($request, $client);
+        $url = $client->getConnector()->getAccountsEndpoint().static::COLLECTION_PATH;
 
-            return new static($data, $url, $client, true);
+        try {
+            $data = $client->getConnector()->send(static::COLLECTION_PATH);
+
+            // @todo: next level: remove url and guzzle client from the constructor. PlatformClient should be enough.
+            return new static($data, $url, $client->getConnector()->getClient(), true);
         } catch (BadResponseException $e) {
             $response = $e->getResponse();
-            if ($response && $response->getStatusCode() === 404) {
+            // The API may throw either 404 (not found) or 422 (the requested entity id does not exist).
+            if ($response && in_array($response->getStatusCode(), [404, 422])) {
                 return false;
             }
             throw $e;
@@ -180,25 +185,39 @@ abstract class ApiResourceBase implements \ArrayAccess
     }
 
     /**
+     * Get a collection of resources.
+     *
+     * @param PlatformClient $client  A suitably configured Platform client.
+     * @param QueryInterface $query   An instance of query interface. It will be used to build a guzzle query.
+     *
+     * @return Collection;
+     */
+    public static function getCollection(PlatformClient $client, ?QueryInterface $query = null)
+    {
+        return new Collection(static::class, $client, $query);
+    }
+
+    /**
      * Create a resource.
      *
+     * @param PlatformClient  $client
      * @param array           $body
-     * @param string          $collectionUrl
-     * @param ClientInterface $client
      *
      * @return Result
      */
-    public static function create(array $body, $collectionUrl, ClientInterface $client)
+    public static function create(PlatformClient $client, array $body)
     {
         if ($errors = static::checkNew($body)) {
             $message = "Cannot create resource due to validation error(s): " . implode('; ', $errors);
             throw new \InvalidArgumentException($message);
         }
 
-        $request = new Request('post', $collectionUrl, [], \GuzzleHttp\json_encode($body));
-        $data = self::send($request, $client);
+        $url = $client->getConnector()->getAccountsEndpoint().static::COLLECTION_PATH;
+        $request = new Request('post', $url, [], \GuzzleHttp\json_encode($body));
 
-        return new Result($data, $collectionUrl, $client, get_called_class());
+        $data = $client->getConnector()->sendRequest($request);
+
+        return new Result($data, $url, $client->getConnector()->getClient(), get_called_class());
     }
 
     /**
@@ -211,11 +230,13 @@ abstract class ApiResourceBase implements \ArrayAccess
      * @param array            $options
      *
      * @internal
+     * @deprecated
      *
      * @return array
      */
     public static function send(RequestInterface $request, ClientInterface $client, array $options = [])
     {
+        // @todo: delete me!!!!
         $response = null;
         try {
             $response = $client->send($request, $options);
@@ -296,35 +317,6 @@ abstract class ApiResourceBase implements \ArrayAccess
     }
 
     /**
-     * Get a collection of resources.
-     *
-     * @param string          $url     The collection URL.
-     * @param int             $limit   A limit on the number of resources to
-     *                                 return.
-     * @param array           $options An array of additional Guzzle request
-     *                                 options.
-     * @param ClientInterface $client  A suitably configured Guzzle client.
-     *
-     * @return static[]
-     */
-    public static function getCollection($url, $limit = 0, array $options = [], ClientInterface $client)
-    {
-        // @todo uncomment this when the API implements a 'count' parameter
-        // if ($limit) {
-            // $options['query']['count'] = $limit;
-        // }
-        $request = new Request('get', $url);
-        $data = self::send($request, $client, $options);
-
-        // @todo remove this when the API implements a 'count' parameter
-        if ($limit) {
-            $data = array_slice($data, 0, $limit);
-        }
-
-        return static::wrapCollection($data, $url, $client);
-    }
-
-    /**
      * Create an array of resource instances from a collection's JSON data.
      *
      * @param array           $data    The deserialized JSON from the
@@ -333,16 +325,29 @@ abstract class ApiResourceBase implements \ArrayAccess
      * @param string          $baseUrl The URL to the collection.
      * @param ClientInterface $client  A suitably configured Guzzle client.
      *
-     * @return static[]
+     * @deprecated
+     *
+     * @return ResourceCollection
      */
-    public static function wrapCollection(array $data, $baseUrl, ClientInterface $client)
+    public static function wrapCollection(array $data, $baseUrl, ClientInterface $client, $page = 1)
     {
-        $resources = [];
-        foreach ($data as $item) {
-            $resources[] = new static($item, $baseUrl, $client);
+        $collection_name = static::COLLECTION_NAME;
+
+        if ($collection_name && isset($data[$collection_name])) {
+            $items = $data[$collection_name];
+            $count = $data['count'];
+        } else {
+            $items = $data;
+            $count = count($data);
         }
 
-        return $resources;
+        $collection = new ResourceCollection($count, $page);
+
+        foreach ($items as $item) {
+            $collection->push(new static($item, $baseUrl, $client));
+        }
+
+        return $collection;
     }
 
     /**
@@ -351,6 +356,8 @@ abstract class ApiResourceBase implements \ArrayAccess
      * @param string $op
      * @param string $method
      * @param array  $body
+     *
+     * // HUH?!
      *
      * @return Result
      */

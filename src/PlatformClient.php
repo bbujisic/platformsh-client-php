@@ -5,14 +5,17 @@ namespace Platformsh\Client;
 use GuzzleHttp\Exception\BadResponseException;
 use Platformsh\Client\Connection\Connector;
 use Platformsh\Client\Connection\ConnectorInterface;
+use Platformsh\Client\DataStructure\Collection;
 use Platformsh\Client\Exception\ApiResponseException;
 use Platformsh\Client\Model\Billing\PlanRecord;
-use Platformsh\Client\Model\Billing\PlanRecordQuery;
 use Platformsh\Client\Model\Project;
 use Platformsh\Client\Model\Region;
 use Platformsh\Client\Model\Result;
 use Platformsh\Client\Model\SshKey;
 use Platformsh\Client\Model\Subscription;
+use Platformsh\Client\Query\PlanRecordQuery;
+use Platformsh\Client\Query\RegionQuery;
+use Platformsh\Client\Query\SubscriptionQuery;
 
 class PlatformClient
 {
@@ -260,7 +263,7 @@ class PlatformClient
      *   similar code to wait for the subscription's project to be provisioned
      *   and activated.
      */
-    public function createSubscription($region, $plan = 'development', $title = null, $storage = null, $environments = null, array $activationCallback = null)
+    public function createSubscription($region, $plan = 'development', $title = null, $storage = null, $environments = null, array $activationCallback = null): Subscription
     {
         $url = $this->accountsEndpoint . 'subscriptions';
         $values = $this->cleanRequest([
@@ -272,7 +275,7 @@ class PlatformClient
           'activation_callback' => $activationCallback,
         ]);
 
-        return Subscription::create($values, $url, $this->connector->getClient());
+        return Subscription::create($this, $values);
     }
 
     /**
@@ -280,23 +283,17 @@ class PlatformClient
      *
      * @return Subscription[]
      */
-    public function getSubscriptions()
+    public function getSubscriptions(?SubscriptionQuery $query = null): Collection
     {
-        $url = $this->accountsEndpoint . 'subscriptions';
-        return Subscription::getCollection($url, 0, [], $this->connector->getClient());
+        return Subscription::getCollection($this, $query);
     }
 
     /**
      * Get a subscription by its ID.
-     *
-     * @param string|int $id
-     *
-     * @return Subscription|false
      */
-    public function getSubscription($id)
+    public function getSubscription(int $id): ?Subscription
     {
-        $url = $this->accountsEndpoint . 'subscriptions';
-        return Subscription::get($id, $url, $this->connector->getClient());
+        return Subscription::get($this, $id);
     }
 
     /**
@@ -309,7 +306,7 @@ class PlatformClient
      *
      * @return array An array containing at least 'total' (a formatted price).
      */
-    public function getSubscriptionEstimate($plan, $storage, $environments, $users)
+    public function getSubscriptionEstimate(string $plan, int $storage, int $environments, int $users): array
     {
         $options = [];
         $options['query'] = [
@@ -330,9 +327,9 @@ class PlatformClient
      *
      * @return Region[]
      */
-    public function getRegions()
+    public function getRegions(RegionQuery $query = null): Collection
     {
-        return Region::getCollection($this->accountsEndpoint . 'regions', 0, [], $this->getConnector()->getClient());
+        return Region::getCollection($this, $query);
     }
 
     /**
