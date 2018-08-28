@@ -167,12 +167,13 @@ abstract class ApiResourceBase implements \ArrayAccess
      */
     public static function get(PlatformClient $client, $id)
     {
-        $url = $client->getConnector()->getAccountsEndpoint().static::COLLECTION_PATH;
+        $path = static::COLLECTION_PATH.'/'.$id;
 
         try {
-            $data = $client->getConnector()->send(static::COLLECTION_PATH);
+            $data = $client->getConnector()->send($path);
 
             // @todo: next level: remove url and guzzle client from the constructor. PlatformClient should be enough.
+            $url = $client->getConnector()->getAccountsEndpoint().$path;
             return new static($data, $url, $client->getConnector()->getClient(), true);
         } catch (BadResponseException $e) {
             $response = $e->getResponse();
