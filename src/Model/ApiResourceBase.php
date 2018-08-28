@@ -221,58 +221,20 @@ abstract class ApiResourceBase implements \ArrayAccess
         return new Result($data, $url, $client->getConnector()->getClient(), get_called_class());
     }
 
-    /**
-     * Send a Guzzle request.
-     *
-     * Using this method allows exceptions to be standardized.
-     *
-     * @param RequestInterface $request
-     * @param ClientInterface  $client
-     * @param array            $options
-     *
-     * @internal
-     * @deprecated
-     *
-     * @return array
-     */
-    public static function send(RequestInterface $request, ClientInterface $client, array $options = [])
-    {
-        // @todo: delete me!!!!
-        $response = null;
-        try {
-            $response = $client->send($request, $options);
-            $body = $response->getBody()->getContents();
-            $data = [];
-            if ($body) {
-                $response->getBody()->seek(0);
-                $body = $response->getBody()->getContents();
-                $data = \GuzzleHttp\json_decode($body, true);
-            }
 
-            return (array) $data;
-        } catch (BadResponseException $e) {
-            throw ApiResponseException::create($e->getRequest(), $e->getResponse());
-        } catch (\InvalidArgumentException $e) {
-            throw ApiResponseException::create($request, $response);
+// THIS SHOULD ALL BE REFACTORED AS IT IS TRULY TERRIBLE
+    // The resource has ClientInterface in its context, but not PlatformClient,
+    // nor Connector. Therefore, it needs some code duplication. Ideally, this method should not be aware of
+    // Guzzle and get the project simply by `$class::get($this->client, $url)`
+    // @todo: Refactor after changing model constructors to accept the entire PlatformClient, not Guzzle!
+
+    protected function send($uri, $method = 'get', $options = []): ?array
+    {
+        if ($body = $this->client->request($method, $uri, $options)->getBody()->getContents()) {
+            return \GuzzleHttp\json_decode($body, true);
         }
-    }
 
-    /**
-     * A simple helper function to send an HTTP request.
-     *
-     * @param string $url
-     * @param string $method
-     * @param array  $options
-     *
-     * @return array
-     */
-    protected function sendRequest($url, $method = 'get', array $options = [])
-    {
-        return $this->send(
-          new Request($method, $url),
-          $this->client,
-          $options
-        );
+        return false;
     }
 
     /**
@@ -282,18 +244,34 @@ abstract class ApiResourceBase implements \ArrayAccess
     {
         $url = $this->getLink($rel);
 
-        // This is really sad. Subscription has ClientInterface in its context, but not PlatformClient,
-        // nor Connector. Therefore, it needs some code duplication. Ideally, this method should not be aware of
-        // Guzzle and get the project simply by `$class::get($this->client, $url)`
-        // @todo: Refactor after changing model constructors to accept the entire PlatformClient, not Guzzle!
-        if ($body = $this->client->get($url)->getBody()->getContents()) {
-            $data = \GuzzleHttp\json_decode($body, true);
-
+        if ($data = $this->send($url)) {
             return new $class($data, $url, $this->client);
         }
 
         return false;
     }
+
+    /**
+     * Get a subresource from a hal link.
+     *
+     * @return ApiResourceBase[]
+     */
+    protected function getLinkedResources(string $rel, string $class): ?array
+    {
+        $out = [];
+        $url = $this->getLink($rel);
+
+        if ($data = $this->send($url)) {
+            foreach ($data as $datum) {
+                $out[] = new $class($datum, $url, $this->client);
+            }
+        }
+
+        return $out;
+    }
+
+
+// =============================
 
     /**
      * Get the required properties for creating a new resource.

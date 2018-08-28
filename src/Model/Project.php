@@ -125,7 +125,7 @@ class Project extends ApiResourceBase
      */
     public function getUsers()
     {
-        return ProjectAccess::getCollection($this->getLink('access'), 0, [], $this->client);
+        return $this->getLinkedResources('access', ProjectAccess::class);
     }
 
     /**
@@ -141,6 +141,7 @@ class Project extends ApiResourceBase
      *
      * @return Result
      */
+    // @todo: broken
     public function addUser($user, $role, $byUuid = false)
     {
         $property = $byUuid ? 'user' : 'email';
@@ -151,14 +152,17 @@ class Project extends ApiResourceBase
 
     /**
      * Get a single environment of the project.
-     *
-     * @param string $id
-     *
-     * @return Environment|false
      */
-    public function getEnvironment($id)
+    public function getEnvironment(string $id): ?Environment
     {
-        return Environment::get($id, $this->getLink('environments'), $this->client);
+        $uri = rtrim($this->getLink('environments')).'/'.urlencode($id);
+
+        $data = $this->send($uri);
+        if ($data) {
+            return new Environment($data, $uri, $this->client);
+        }
+
+        return false;
     }
 
     /**
@@ -203,13 +207,11 @@ class Project extends ApiResourceBase
     /**
      * Get a list of environments for the project.
      *
-     * @param int $limit
-     *
      * @return Environment[]
      */
-    public function getEnvironments($limit = 0)
+    public function getEnvironments(): array
     {
-        return Environment::getCollection($this->getLink('environments'), $limit, [], $this->client);
+        return $this->getLinkedResources('environments', Environment::class);
     }
 
     /**
@@ -219,6 +221,7 @@ class Project extends ApiResourceBase
      *
      * @return Domain[]
      */
+    // @todo: broken
     public function getDomains($limit = 0)
     {
         return Domain::getCollection($this->getLink('domains'), $limit, [], $this->client);
@@ -231,6 +234,7 @@ class Project extends ApiResourceBase
      *
      * @return Domain|false
      */
+    // @todo: broken
     public function getDomain($name)
     {
         return Domain::get($name, $this->getLink('domains'), $this->client);
@@ -244,6 +248,7 @@ class Project extends ApiResourceBase
      *
      * @return Result
      */
+    // @todo: broken
     public function addDomain($name, array $ssl = [])
     {
         $body = ['name' => $name];
@@ -261,6 +266,7 @@ class Project extends ApiResourceBase
      *
      * @return Integration[]
      */
+    // @todo: broken
     public function getIntegrations($limit = 0)
     {
         return Integration::getCollection($this->getLink('integrations'), $limit, [], $this->client);
@@ -273,6 +279,7 @@ class Project extends ApiResourceBase
      *
      * @return Integration|false
      */
+    // @todo: broken
     public function getIntegration($id)
     {
         return Integration::get($id, $this->getLink('integrations'), $this->client);
@@ -286,6 +293,7 @@ class Project extends ApiResourceBase
      *
      * @return Result
      */
+    // @todo: broken
     public function addIntegration($type, array $data = [])
     {
         $body = ['type' => $type] + $data;
@@ -300,6 +308,7 @@ class Project extends ApiResourceBase
      *
      * @return Activity|false
      */
+    // @todo: broken
     public function getActivity($id)
     {
         return Activity::get($id, $this->getUri() . '/activities', $this->client);
@@ -317,6 +326,7 @@ class Project extends ApiResourceBase
      *
      * @return Activity[]
      */
+    // @todo: broken
     public function getActivities($limit = 0, $type = null, $startsAt = null)
     {
         $options = [];
@@ -359,6 +369,7 @@ class Project extends ApiResourceBase
      *
      * @return ProjectLevelVariable[]
      */
+    // @todo: broken
     public function getVariables($limit = 0)
     {
         return ProjectLevelVariable::getCollection($this->getLink('#manage-variables'), $limit, [], $this->client);
@@ -382,6 +393,7 @@ class Project extends ApiResourceBase
      *
      * @return Result
      */
+    // @todo: broken
     public function setVariable(
         $name,
         $value,
@@ -422,6 +434,7 @@ class Project extends ApiResourceBase
      * @return ProjectLevelVariable|false
      *   The variable requested, or False if it is not defined.
      */
+    // @todo: broken
     public function getVariable($id)
     {
         return ProjectLevelVariable::get($id, $this->getLink('#manage-variables'), $this->client);
@@ -432,6 +445,7 @@ class Project extends ApiResourceBase
      *
      * @return Certificate[]
      */
+    // @todo: broken
     public function getCertificates()
     {
         return Certificate::getCollection($this->getUri() . '/certificates', 0, [], $this->client);
@@ -444,6 +458,7 @@ class Project extends ApiResourceBase
      *
      * @return Certificate|false
      */
+    // @todo: broken
     public function getCertificate($id)
     {
         return Certificate::get($id, $this->getUri() . '/certificates', $this->client);
@@ -458,6 +473,7 @@ class Project extends ApiResourceBase
      *
      * @return Result
      */
+    // @todo: broken
     public function addCertificate($certificate, $key, array $chain = [])
     {
         $options = ['key' => $key, 'certificate' => $certificate, 'chain' => $chain];
