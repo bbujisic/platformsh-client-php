@@ -48,33 +48,16 @@ class PlatformClient
 
     /**
      * Get a single project by its ID.
-     *
-     * @param string $id
-     * @param string $hostname
-     * @param bool   $https
-     *
-     * @return Project|false
      */
-    public function getProject($id, $hostname = null, $https = true)
+    public function getProject(string $id, string $hostname = null, bool $https = true): ?Project
     {
-        // Search for a project in the user's project list.
-        foreach ($this->getProjects() as $project) {
-            if ($project->id === $id) {
-                return $project;
-            }
-        }
-
         // Look for a project directly if the hostname is known.
         if ($hostname !== null) {
-            return $this->getProjectDirect($id, $hostname, $https);
+            return Project::getDirect($this, "$scheme://$hostname/api/projects");
         }
 
-        // Use the project locator.
-        if ($url = $this->locateProject($id)) {
-            return Project::get($url, null, $this->connector->getClient());
-        }
-
-        return false;
+        // Otherwise, use the project locator.
+        return Project::get($this, $id);
     }
 
     /**
@@ -83,6 +66,9 @@ class PlatformClient
      * @param bool $reset
      *
      * @return Project[]
+     *
+     * @deprecated
+     *   Use getSubscriptions instead.
      */
     public function getProjects($reset = false)
     {
@@ -137,54 +123,6 @@ class PlatformClient
                ->getContents(),
           true
         );
-    }
-
-    /**
-     * Get a single project at a known location.
-     *
-     * @param string $id       The project ID.
-     * @param string $hostname The hostname of the Platform.sh regional API,
-     *                         e.g. 'eu.platform.sh' or 'us.platform.sh'.
-     * @param bool   $https    Whether to use HTTPS (default: true).
-     *
-     * @internal It's now better to use getProject(). This method will be made
-     *           private in a future release.
-     *
-     * @return Project|false
-     */
-    public function getProjectDirect($id, $hostname, $https = true)
-    {
-        $scheme = $https ? 'https' : 'http';
-        $collection = "$scheme://$hostname/api/projects";
-        return Project::get($id, $collection, $this->connector->getClient());
-    }
-
-    /**
-     * Locate a project by ID.
-     *
-     * @param string $id
-     *   The project ID.
-     *
-     * @return string
-     *   The project's API endpoint.
-     */
-    protected function locateProject($id)
-    {
-        $url = $this->accountsEndpoint . 'projects/' . rawurlencode($id);
-        try {
-            $result = $this->simpleGet($url);
-        }
-        catch (BadResponseException $e) {
-            $response = $e->getResponse();
-            // @todo Remove 400 from this array when the API is more liberal in validating project IDs.
-            $ignoredErrorCodes = [400, 403, 404];
-            if ($response && in_array($response->getStatusCode(), $ignoredErrorCodes)) {
-                return false;
-            }
-            throw ApiResponseException::create($e->getRequest(), $e->getResponse(), $e->getPrevious());
-        }
-
-        return isset($result['endpoint']) ? $result['endpoint'] : false;
     }
 
     /**

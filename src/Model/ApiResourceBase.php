@@ -276,6 +276,26 @@ abstract class ApiResourceBase implements \ArrayAccess
     }
 
     /**
+     * Get a subresource from a hal link.
+     */
+    protected function getLinkedResource(string $rel, string $class): ApiResourceBase
+    {
+        $url = $this->getLink($rel);
+
+        // This is really sad. Subscription has ClientInterface in its context, but not PlatformClient,
+        // nor Connector. Therefore, it needs some code duplication. Ideally, this method should not be aware of
+        // Guzzle and get the project simply by `$class::get($this->client, $url)`
+        // @todo: Refactor after changing model constructors to accept the entire PlatformClient, not Guzzle!
+        if ($body = $this->client->get($url)->getBody()->getContents()) {
+            $data = \GuzzleHttp\json_decode($body, true);
+
+            return new $class($data, $url, $this->client);
+        }
+
+        return false;
+    }
+
+    /**
      * Get the required properties for creating a new resource.
      *
      * @return array

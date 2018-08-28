@@ -2,7 +2,9 @@
 
 namespace Platformsh\Client\Model;
 
+use GuzzleHttp\Psr7\Request;
 use function GuzzleHttp\Psr7\uri_for;
+use Platformsh\Client\PlatformClient;
 
 /**
  * A Platform.sh project.
@@ -15,6 +17,58 @@ use function GuzzleHttp\Psr7\uri_for;
  */
 class Project extends ApiResourceBase
 {
+    /**
+     * {@inheritdoc}
+     */
+    public static function get(PlatformClient $client, $id): ?self
+    {
+        // Use the project locator to find the project.
+        if ($location = self::locate($client, $id)) {
+            // Request a project resource from the regional API.
+            return self::getDirect($client, $location);
+        }
+    }
+
+    /**
+     * Bypass the project locator if the project location is already known.
+     */
+    public static function getDirect(PlatformClient $client, string $location): ?self
+    {
+        $req = new Request('get', $location);
+        try {
+            $data = $client->getConnector()->sendRequest($req);
+
+            return new static($data, $location, $client->getConnector()->getClient(), true);
+        } catch (BadResponseException $e) {
+            $response = $e->getResponse();
+            // The API may throw either 404 (not found) or 422 (the requested entity id does not exist).
+            if ($response && in_array($response->getStatusCode(), [404, 422])) {
+                return false;
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Locate a project by ID.
+     */
+    public static function locate(PlatformClient $client, $id): ?string {
+        try {
+            $result = $client->getConnector()->send('projects/' . rawurlencode($id));
+        }
+        catch (BadResponseException $e) {
+            $response = $e->getResponse();
+            // @todo Remove 400 from this array when the API is more liberal in validating project IDs.
+            $ignoredErrorCodes = [400, 403, 404];
+            if ($response && in_array($response->getStatusCode(), $ignoredErrorCodes)) {
+                return false;
+            }
+            throw ApiResponseException::create($e->getRequest(), $e->getResponse(), $e->getPrevious());
+        }
+
+        return isset($result['endpoint']) ? $result['endpoint'] : false;
+    }
+
     /**
      * Prevent deletion.
      *
