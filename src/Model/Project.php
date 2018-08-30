@@ -2,7 +2,7 @@
 
 namespace Platformsh\Client\Model;
 
-use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Exception\ClientException;
 use function GuzzleHttp\Psr7\uri_for;
 use Platformsh\Client\PlatformClient;
 
@@ -14,6 +14,10 @@ use Platformsh\Client\PlatformClient;
  * @property-read string $created_at
  * @property-read string $updated_at
  * @property-read string $owner
+ * @property-read string $desription
+ * @property-read string $status
+ * @property-read string $default_domain
+ *
  */
 class Project extends ApiResourceBase
 {
@@ -34,11 +38,10 @@ class Project extends ApiResourceBase
      */
     public static function getDirect(PlatformClient $client, string $location): ?self
     {
-        $req = new Request('get', $location);
         try {
-            $data = $client->getConnector()->sendRequest($req);
+            $data = $client->getConnector()->sendUri($location);
 
-            return new static($data, $location, $client->getConnector()->getClient(), true);
+            return new static($data, $location, $client, true);
         } catch (BadResponseException $e) {
             $response = $e->getResponse();
             // The API may throw either 404 (not found) or 422 (the requested entity id does not exist).
@@ -52,7 +55,8 @@ class Project extends ApiResourceBase
     /**
      * Locate a project by ID.
      */
-    public static function locate(PlatformClient $client, $id): ?string {
+    public static function locate(PlatformClient $client, $id): ?string
+    {
         try {
             $result = $client->getConnector()->send('projects/' . rawurlencode($id));
         }
@@ -123,9 +127,19 @@ class Project extends ApiResourceBase
      *
      * @return ProjectAccess[]
      */
-    public function getUsers()
+    public function getUsers(): array
     {
         return $this->getLinkedResources('access', ProjectAccess::class);
+    }
+
+    /**
+     * Get a user associated with a project.
+     *
+     * @return ProjectAccess|null
+     */
+    public function getUser(string $id): ?ProjectAccess
+    {
+        return $this->getLinkedResource('access', ProjectAccess::class, $id);
     }
 
     /**
@@ -141,28 +155,12 @@ class Project extends ApiResourceBase
      *
      * @return Result
      */
-    // @todo: broken
-    public function addUser($user, $role, $byUuid = false)
+    public function addUser($user, $role, $byUuid = false): Result
     {
         $property = $byUuid ? 'user' : 'email';
         $body = [$property => $user, 'role' => $role];
 
-        return ProjectAccess::create($body, $this->getLink('access'), $this->client);
-    }
-
-    /**
-     * Get a single environment of the project.
-     */
-    public function getEnvironment(string $id): ?Environment
-    {
-        $uri = rtrim($this->getLink('environments')).'/'.urlencode($id);
-
-        $data = $this->send($uri);
-        if ($data) {
-            return new Environment($data, $uri, $this->client);
-        }
-
-        return false;
+        return ProjectAccess::create($this->client, $body, $this->getLink('access'));
     }
 
     /**
@@ -215,29 +213,31 @@ class Project extends ApiResourceBase
     }
 
     /**
+     * Get a single environment of the project.
+     */
+    public function getEnvironment(string $id): ?Environment
+    {
+        return $this->getLinkedResource('environments', Environment::class, $id);
+    }
+
+    /**
      * Get a list of domains for the project.
-     *
-     * @param int $limit
      *
      * @return Domain[]
      */
-    // @todo: broken
-    public function getDomains($limit = 0)
+    public function getDomains(): ?array
     {
-        return Domain::getCollection($this->getLink('domains'), $limit, [], $this->client);
+        return $this->getLinkedResources('domains', Domain::class);
     }
 
     /**
      * Get a single domain of the project.
      *
      * @param string $name
-     *
-     * @return Domain|false
      */
-    // @todo: broken
-    public function getDomain($name)
+    public function getDomain($name): ?Domain
     {
-        return Domain::get($name, $this->getLink('domains'), $this->client);
+        return $this->getLinkedResource('domains', Domain::class, $name);
     }
 
     /**
@@ -248,41 +248,35 @@ class Project extends ApiResourceBase
      *
      * @return Result
      */
-    // @todo: broken
-    public function addDomain($name, array $ssl = [])
+    // @todo: document better: what is ssl array and how to use it?
+    public function addDomain($name, array $ssl = []): Result
     {
         $body = ['name' => $name];
         if (!empty($ssl)) {
             $body['ssl'] = $ssl;
         }
 
-        return Domain::create($body, $this->getLink('domains'), $this->client);
+        return Domain::create($this->client, $body, $this->getLink('domains'));
     }
 
     /**
      * Get a list of integrations for the project.
      *
-     * @param int $limit
-     *
      * @return Integration[]
      */
-    // @todo: broken
-    public function getIntegrations($limit = 0)
+    public function getIntegrations(): ?array
     {
-        return Integration::getCollection($this->getLink('integrations'), $limit, [], $this->client);
+        return $this->getLinkedResources('integrations', Integration::class);
     }
 
     /**
      * Get a single integration of the project.
      *
      * @param string $id
-     *
-     * @return Integration|false
      */
-    // @todo: broken
-    public function getIntegration($id)
+    public function getIntegration(string $id): ?Integration
     {
-        return Integration::get($id, $this->getLink('integrations'), $this->client);
+        return $this->getLinkedResource('integrations', Integration::class, $id);
     }
 
     /**
@@ -290,28 +284,26 @@ class Project extends ApiResourceBase
      *
      * @param string $type
      * @param array $data
-     *
-     * @return Result
      */
-    // @todo: broken
-    public function addIntegration($type, array $data = [])
+    // @todo: document it, maybe refactor it for easier consumption and validation.
+    public function addIntegration(string $type, array $data = []): Result
     {
         $body = ['type' => $type] + $data;
 
-        return Integration::create($body, $this->getLink('integrations'), $this->client);
+        return Integration::create($this->client, $body, $this->getLink('integrations'));
     }
 
     /**
      * Get a single project activity.
      *
-     * @param string $id
-     *
-     * @return Activity|false
+     * @param string $id Activity id
      */
-    // @todo: broken
-    public function getActivity($id)
+    public function getActivity(string $id): ?Activity
     {
-        return Activity::get($id, $this->getUri() . '/activities', $this->client);
+        // @todo: abstract away!!! Optimally, I want to construct the activity with `Activity::get($client, $url)`
+        $data = $this->client->getConnector()->sendUri($this->getUri() . '/activities/' . urlencode($id));
+
+        return new Activity($data, $this->getUri() . '/activities/' . urlencode($id), $this->client);
     }
 
     /**
@@ -326,9 +318,10 @@ class Project extends ApiResourceBase
      *
      * @return Activity[]
      */
-    // @todo: broken
     public function getActivities($limit = 0, $type = null, $startsAt = null)
     {
+        // @todo: $startsAt doesn't work.
+        // @todo: $limit doesn't work.
         $options = [];
         if ($type !== null) {
             $options['query']['type'] = $type;
@@ -337,7 +330,13 @@ class Project extends ApiResourceBase
             $options['query']['starts_at'] = Activity::formatStartsAt($startsAt);
         }
 
-        $activities = Activity::getCollection($this->getUri() . '/activities', $limit, $options, $this->client);
+        // This should clearly be abstracted. Ideally, this should be Activity::getCollection($client, $url, $query)
+        $data = $this->client->getConnector()->sendUri($this->getUri() . '/activities', 'get', $options);
+
+        $activities = [];
+        foreach ($data as $datum) {
+            $activities[] = new Activity($datum, $this->getUri() . '/activities', $this->client);
+        }
 
         // Guarantee the type filter (works around a temporary bug).
         if ($type !== null) {
@@ -365,14 +364,11 @@ class Project extends ApiResourceBase
     /**
      * Get a list of variables.
      *
-     * @param int $limit
-     *
      * @return ProjectLevelVariable[]
      */
-    // @todo: broken
-    public function getVariables($limit = 0)
+    public function getVariables(): array
     {
-        return ProjectLevelVariable::getCollection($this->getLink('#manage-variables'), $limit, [], $this->client);
+        return $this->getLinkedResources('#manage-variables', ProjectLevelVariable::class);
     }
 
     /**
@@ -393,7 +389,6 @@ class Project extends ApiResourceBase
      *
      * @return Result
      */
-    // @todo: broken
     public function setVariable(
         $name,
         $value,
@@ -408,7 +403,7 @@ class Project extends ApiResourceBase
             $json = true;
         }
         $values = [
-            'value' => $value,
+            'value' => (string)$value,
             'is_json' => $json,
             'visible_build' => $visibleBuild,
             'visible_runtime' => $visibleRuntime];
@@ -423,7 +418,7 @@ class Project extends ApiResourceBase
 
         $values['name'] = $name;
 
-        return ProjectLevelVariable::create($values, $this->getLink('#manage-variables'), $this->client);
+        return ProjectLevelVariable::create($this->client, $values, $this->getLink('#manage-variables'));
     }
 
     /**
@@ -431,13 +426,12 @@ class Project extends ApiResourceBase
      *
      * @param string $id
      *   The name of the variable to retrieve.
-     * @return ProjectLevelVariable|false
-     *   The variable requested, or False if it is not defined.
+     * @return ProjectLevelVariable|null
+     *   The variable requested, or null if it is not defined.
      */
-    // @todo: broken
-    public function getVariable($id)
+    public function getVariable(string $id): ?ProjectLevelVariable
     {
-        return ProjectLevelVariable::get($id, $this->getLink('#manage-variables'), $this->client);
+        return $this->getLinkedResource('#manage-variables', ProjectLevelVariable::class, $id);
     }
 
     /**
@@ -445,23 +439,37 @@ class Project extends ApiResourceBase
      *
      * @return Certificate[]
      */
-    // @todo: broken
     public function getCertificates()
     {
-        return Certificate::getCollection($this->getUri() . '/certificates', 0, [], $this->client);
+        // @todo @see getActivities() and optimize.
+        $data = $this->client->getConnector()->sendUri($this->getUri().'/certificates');
+
+        $certificates = [];
+        foreach ($data as $datum) {
+            $certificates[] = new Certificate($datum, $this->getUri().'/certificates', $this->client);
+        }
+
+        return $certificates;
     }
 
     /**
      * Get a single certificate.
-     *
-     * @param string $id
-     *
-     * @return Certificate|false
      */
-    // @todo: broken
-    public function getCertificate($id)
+    public function getCertificate(string $id): ?Certificate
     {
-        return Certificate::get($id, $this->getUri() . '/certificates', $this->client);
+        // @todo @see getActivity() and optimize.
+        try {
+            $data = $this->client->getConnector()->sendUri($this->getUri().'/certificates/'.urlencode($id));
+        } catch (ClientException $e) {
+            $response = $e->getResponse();
+            // The API may throw either 404 (not found) or 422 (the requested entity id does not exist).
+            if ($response && in_array($response->getStatusCode(), [404, 422])) {
+                return null;
+            }
+            throw $e;
+        }
+
+        return new Certificate($data, $this->getUri() . '/certificates/' . urlencode($id), $this->client);
     }
 
     /**
@@ -473,12 +481,11 @@ class Project extends ApiResourceBase
      *
      * @return Result
      */
-    // @todo: broken
-    public function addCertificate($certificate, $key, array $chain = [])
+    public function addCertificate($certificate, $key, array $chain = []): Result
     {
         $options = ['key' => $key, 'certificate' => $certificate, 'chain' => $chain];
 
-        return Certificate::create($options, $this->getUri() . '/certificates', $this->client);
+        return Certificate::create($this->client, $options, $this->getUri() . '/certificates');
     }
 
     /**
