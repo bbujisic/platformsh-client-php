@@ -289,14 +289,27 @@ class Connector implements ConnectorInterface
     /**
      * {@inheritdoc}
      */
-    public function send($resourcePath, $method = 'get', $options = []) {
+    public function send(string $resourcePath, string $method = 'get', array $options = []): array
+    {
 
-        $request = new Request($method, $this->getAccountsEndpoint().$resourcePath);
+        return $this->sendUri($this->getAccountsEndpoint().$resourcePath, $method, $options);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function sendUri(string $uri, string $method = 'get', array $options = []): array
+    {
+        $request = new Request($method, $uri);
 
         return $this->sendRequest($request, $options);
     }
 
-    public function sendRequest(Request $request, $options = []) {
+    /**
+     * {@inheritdoc}
+     */
+    public function sendRequest(Request $request, array $options = []): array
+    {
         $response = null;
         try {
             $response = $this->getClient()->send($request, $options);
