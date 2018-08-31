@@ -2,64 +2,39 @@
 
 namespace Platformsh\Client\Tests;
 
-use Platformsh\Client\PlatformClient;
+use \Platformsh\Client\PlatformClient;
 
-class PlatformClientTest extends \PHPUnit_Framework_TestCase
+class PlatformClientTest extends PlatformshTestBase
 {
 
-    /** @var MockConnector */
-    protected $connector;
-
-    /** @var PlatformClient */
-    protected $client;
-
     /**
-     * @inheritdoc
+     * @covers PlatformClient::getProject
+     * @covers \Platformsh\Client\Model\Project::get
+     * @covers \Platformsh\Client\Model\Project::getDirect
      */
-    protected function setUp()
+    public function testGetProject()
     {
-        $this->connector = new MockConnector();
-        $this->client = new PlatformClient($this->connector);
-    }
+        $this->assertNull(
+            $this->client->getProject('no-project', 'example.com'),
+            'Load a non-existing project with a known hostname.'
+        );
+        $this->assertNull(
+            $this->client->getProject('no-project'),
+            'Load a non-existing project without a known hostname.'
+        );
 
-    public function testGetProjectsNone()
-    {
-        $this->connector->setMockResult(['projects' => []]);
-
-        $this->assertEquals([], $this->client->getProjects());
-        $this->assertFalse($this->client->getProject('test'));
-    }
-
-    public function testGetProjectsSingle()
-    {
-        $testProject = [
-          'id' => 'test',
-          'name' => 'Test project',
-          'endpoint' => 'https://example.com/api/projects/test',
-        ];
-        $this->connector->setMockResult(['projects' => [$testProject]]);
-        $projects = $this->client->getProjects();
-        $this->assertEquals($testProject['name'], $projects[0]['name']);
-        $this->assertEquals($testProject['endpoint'], $projects[0]['endpoint']);
+        $project = $this->client->getProject('test', 'example.com');
+        $this->assertEquals(
+            $this->testProject['title'],
+            $project->title,
+            'Load a project with a known host name.'
+        );
 
         $project = $this->client->getProject('test');
-        $this->assertEquals($testProject['name'], $project['name']);
-        $this->assertEquals($testProject['endpoint'], $project['endpoint']);
-    }
-
-    public function testGetProjectDirect()
-    {
-        $this->connector->setMockResult(['id' => 'test']);
-        $project = $this->client->getProjectDirect('test', 'example.com');
-        $this->assertInstanceOf('\\Platformsh\\Client\\Model\\Project', $project);
-        $this->connector->setMockResult([], 404);
-        $project = $this->client->getProjectDirect('test2', 'example.com');
-        $this->assertFalse($project);
-    }
-
-    public function testAddSshKeyInvalid()
-    {
-        $this->setExpectedException('InvalidArgumentException');
-        $this->client->addSshKey('test invalid key');
+        $this->assertEquals(
+            $this->testProject['title'],
+            $project->title,
+            'Load a project without a known host name.'
+        );
     }
 }
