@@ -31,6 +31,8 @@ class Project extends ApiResourceBase
             // Request a project resource from the regional API.
             return self::getDirect($client, $location);
         }
+
+        return null;
     }
 
     /**
@@ -39,17 +41,16 @@ class Project extends ApiResourceBase
     public static function getDirect(PlatformClient $client, string $location): ?self
     {
         try {
-            $data = $client->getConnector()->sendUri($location);
+            $data = $client->getConnector()->sendToUri($location);
 
             return new static($data, $location, $client, true);
-        } catch (BadResponseException $e) {
-            $response = $e->getResponse();
+        } catch (\Exception $e) {
             // The API may throw either 404 (not found) or 422 (the requested entity id does not exist).
-            if ($response && in_array($response->getStatusCode(), [404, 422])) {
-                return false;
+            if (!in_array($e->getCode(), [404, 422])) {
+                throw $e;
             }
-            throw $e;
         }
+        return null;
     }
 
     /**
@@ -58,19 +59,15 @@ class Project extends ApiResourceBase
     public static function locate(PlatformClient $client, $id): ?string
     {
         try {
-            $result = $client->getConnector()->send('projects/' . rawurlencode($id));
-        }
-        catch (BadResponseException $e) {
-            $response = $e->getResponse();
-            // @todo Remove 400 from this array when the API is more liberal in validating project IDs.
-            $ignoredErrorCodes = [400, 403, 404];
-            if ($response && in_array($response->getStatusCode(), $ignoredErrorCodes)) {
-                return false;
+            $result = $client->getConnector()->sendToAccounts('projects/'.rawurlencode($id));
+        } catch (\Exception $e) {
+            // The API may throw 400 (bad request), 403 (forbidden) or 404 (not found).
+            if (!in_array($e->getCode(), [400, 403, 404])) {
+                throw $e;
             }
-            throw ApiResponseException::create($e->getRequest(), $e->getResponse(), $e->getPrevious());
         }
 
-        return isset($result['endpoint']) ? $result['endpoint'] : false;
+        return isset($result['endpoint']) ? $result['endpoint'] : null;
     }
 
     /**
@@ -301,7 +298,7 @@ class Project extends ApiResourceBase
     public function getActivity(string $id): ?Activity
     {
         // @todo: abstract away!!! Optimally, I want to construct the activity with `Activity::get($client, $url)`
-        $data = $this->client->getConnector()->sendUri($this->getUri() . '/activities/' . urlencode($id));
+        $data = $this->client->getConnector()->sendToUri($this->getUri() . '/activities/' . urlencode($id));
 
         return new Activity($data, $this->getUri() . '/activities/' . urlencode($id), $this->client);
     }
@@ -331,7 +328,7 @@ class Project extends ApiResourceBase
         }
 
         // This should clearly be abstracted. Ideally, this should be Activity::getCollection($client, $url, $query)
-        $data = $this->client->getConnector()->sendUri($this->getUri() . '/activities', 'get', $options);
+        $data = $this->client->getConnector()->sendToUri($this->getUri() . '/activities', 'get', $options);
 
         $activities = [];
         foreach ($data as $datum) {
@@ -442,7 +439,7 @@ class Project extends ApiResourceBase
     public function getCertificates()
     {
         // @todo @see getActivities() and optimize.
-        $data = $this->client->getConnector()->sendUri($this->getUri().'/certificates');
+        $data = $this->client->getConnector()->sendToUri($this->getUri().'/certificates');
 
         $certificates = [];
         foreach ($data as $datum) {
@@ -459,7 +456,7 @@ class Project extends ApiResourceBase
     {
         // @todo @see getActivity() and optimize.
         try {
-            $data = $this->client->getConnector()->sendUri($this->getUri().'/certificates/'.urlencode($id));
+            $data = $this->client->getConnector()->sendToUri($this->getUri().'/certificates/'.urlencode($id));
         } catch (ClientException $e) {
             $response = $e->getResponse();
             // The API may throw either 404 (not found) or 422 (the requested entity id does not exist).

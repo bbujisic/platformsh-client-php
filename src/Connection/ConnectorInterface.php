@@ -79,7 +79,7 @@ interface ConnectorInterface
      *
      * @return  array
      */
-    public function send(string $resourcePath, string $method = 'get',array $options = []);
+    public function sendToAccounts(string $resourcePath, string $method = 'get',array $options = []);
 
     /**
      * Send a Guzzle request.
@@ -91,7 +91,7 @@ interface ConnectorInterface
      *
      * @return  array
      */
-    public function sendUri(string $uri, string $method = 'get', array $options = []);
+    public function sendToUri(string $uri, string $method = 'get', array $options = []);
 
     /**
      * Send a Guzzle request.

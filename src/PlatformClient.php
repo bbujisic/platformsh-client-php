@@ -53,7 +53,10 @@ class PlatformClient
     {
         // Look for a project directly if the hostname is known.
         if ($hostname !== null) {
-            return Project::getDirect($this, "$scheme://$hostname/api/projects");
+            $scheme = $https ? 'https' : 'http';
+            $id = urlencode($id);
+
+            return Project::getDirect($this, "$scheme://$hostname/api/projects/$id");
         }
 
         // Otherwise, use the project locator.
