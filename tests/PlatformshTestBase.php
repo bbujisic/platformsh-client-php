@@ -29,6 +29,7 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
 
         $this->mockProjectAPIs();
         $this->mockUserAPI();
+        $this->mockSubscriptionAPIs();
 
         $this->client = new PlatformClient($this->connectorProphet->reveal());
 
@@ -57,6 +58,23 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
     private function mockUserAPI()
     {
         $this->connectorProphet->sendToAccounts('me')->willReturn($this->userData);
+    }
+
+    private function mockSubscriptionAPIs()
+    {
+        $this->connectorProphet->sendToAccounts(
+            "estimate",
+            "get",
+            ["query" => ["plan" => "standard", "storage" => 50, "environments" => 3, "user_licenses" => 3]]
+        )->willReturn(
+            [
+                'plan' => '40 €',
+                'total' => '114 €',
+                'user_licenses' => '20 €',
+                'environments' => '0 €',
+                'storage' => '54 €',
+            ]
+        );
     }
 
 }

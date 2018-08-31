@@ -99,26 +99,6 @@ class PlatformClient
     }
 
     /**
-     * Get a URL and return the JSON-decoded response.
-     *
-     * @param string $url
-     * @param array  $options
-     *
-     * @return array
-     */
-    private function simpleGet($url, array $options = [])
-    {
-        return (array) \GuzzleHttp\json_decode(
-          $this->getConnector()
-               ->getClient()
-               ->request('get', $url, $options)
-               ->getBody()
-               ->getContents(),
-          true
-        );
-    }
-
-    /**
      * Get the logged-in user's SSH keys.
      *
      * @param bool $reset
@@ -246,11 +226,8 @@ class PlatformClient
             'environments' => $environments,
             'user_licenses' => $users,
         ];
-        try {
-            return $this->simpleGet($this->accountsEndpoint . 'estimate', $options);
-        } catch (BadResponseException $e) {
-            throw ApiResponseException::create($e->getRequest(), $e->getResponse(), $e->getPrevious());
-        }
+
+        return $this->getConnector()->sendToAccounts('estimate', 'get', $options);
     }
 
     /**
