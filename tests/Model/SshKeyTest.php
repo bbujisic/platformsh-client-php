@@ -17,7 +17,7 @@ class SshKeyTest extends PlatformshTestBase
 
 
     /**
-     * @covers PlatformClient::getSshKeys
+     * @covers \Platformsh\Client\PlatformClient::getSshKeys()
      */
     public function testSshKeysLoad()
     {
@@ -26,7 +26,7 @@ class SshKeyTest extends PlatformshTestBase
     }
 
     /**
-     * @covers SshKey::validatePublicKey
+     * @covers \Platformsh\Client\Model\SshKey::validatePublicKey()
      */
     public function testSshKeyValidation()
     {
@@ -35,8 +35,8 @@ class SshKeyTest extends PlatformshTestBase
     }
 
     /**
-     * @covers PlatformClient::getSshKey
-     * @covers SshKey::get
+     * @covers \Platformsh\Client\PlatformClient::getSshKey()
+     * @covers \Platformsh\Client\Model\SshKey::get()
      *
      */
     public function testSshKeyLoad()
@@ -46,9 +46,9 @@ class SshKeyTest extends PlatformshTestBase
     }
 
     /**
-     * @covers PlatformClient::addSshKey
-     * @covers SshKey::create
-     * @covers SshKey::validatePublicKey
+     * @covers \Platformsh\Client\PlatformClient::addSshKey()
+     * @covers \Platformsh\Client\Model\SshKey::create()
+     * @covers \Platformsh\Client\Model\SshKey::validatePublicKey()
      *
      */
     public function testUnsuccessfulSshKeyCreation()

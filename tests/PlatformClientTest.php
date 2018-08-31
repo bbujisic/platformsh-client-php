@@ -8,9 +8,9 @@ class PlatformClientTest extends PlatformshTestBase
 {
 
     /**
-     * @covers PlatformClient::getProject
-     * @covers \Platformsh\Client\Model\Project::get
-     * @covers \Platformsh\Client\Model\Project::getDirect
+     * @covers \Platformsh\Client\PlatformClient::getProject()
+     * @covers \Platformsh\Client\Model\Project::get()
+     * @covers \Platformsh\Client\Model\Project::getDirect()
      */
     public function testGetProject()
     {
@@ -39,7 +39,7 @@ class PlatformClientTest extends PlatformshTestBase
     }
 
     /**
-     * @covers PlatformClient::getAccountInfo
+     * @covers \Platformsh\Client\PlatformClient::getAccountInfo()
      */
     public function testGetAccountInfo() {
         $account = $this->client->getAccountInfo();
@@ -47,7 +47,7 @@ class PlatformClientTest extends PlatformshTestBase
     }
 
     /**
-     * @covers PlatformClient::getSubscriptionEstimate
+     * @covers \Platformsh\Client\PlatformClient::getSubscriptionEstimate()
      */
     public function testSubscriptionEstimate()
     {

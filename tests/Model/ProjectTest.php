@@ -19,7 +19,7 @@ class ProjectTest extends PlatformshTestBase
 
 
     /**
-     * @covers Project::delete
+     * @covers \Platformsh\Client\Model\Project::delete()
      */
     public function testProjectDeletion()
     {
@@ -28,8 +28,8 @@ class ProjectTest extends PlatformshTestBase
     }
 
     /**
-     * @covers Project::getSubscriptionId
-     * @covers Project::getGitUrl
+     * @covers \Platformsh\Client\Model\Project::getSubscriptionId()
+     * @covers \Platformsh\Client\Model\Project::getGitUrl()
      */
     public function testPropertyGetters()
     {
