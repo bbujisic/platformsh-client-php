@@ -88,21 +88,11 @@ class PlatformClient
 
     /**
      * Get account information for the logged-in user.
-     *
-     * @param bool $reset
-     *
-     * @return array
      */
-    public function getAccountInfo($reset = false)
+    public function getAccountInfo($reset = false): array
     {
         if (!isset($this->accountInfo) || $reset) {
-            $url = $this->accountsEndpoint . 'me';
-            try {
-                $this->accountInfo = $this->simpleGet($url);
-            }
-            catch (BadResponseException $e) {
-                throw ApiResponseException::create($e->getRequest(), $e->getResponse(), $e->getPrevious());
-            }
+            $this->accountInfo = $this->getConnector()->sendToAccounts('me');
         }
 
         return $this->accountInfo;

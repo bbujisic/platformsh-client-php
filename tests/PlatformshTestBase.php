@@ -28,6 +28,7 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
         $this->connectorProphet->getAccountsEndpoint()->willReturn('https://accounts.example.com/api');
 
         $this->mockProjectAPIs();
+        $this->mockUserAPI();
 
         $this->client = new PlatformClient($this->connectorProphet->reveal());
 
@@ -43,4 +44,19 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
         $this->connectorProphet->sendToAccounts('projects/test')->willReturn($this->testProject);
         $this->connectorProphet->sendToAccounts('projects/no-project')->willThrow(new \Exception('not found', 404));
     }
+
+    private $userData = [
+        'id' => 'my_uuid',
+        'uuid' => 'my_uuid',
+        'username' => 'tester',
+        'display_name' => 'Tester Testowsky',
+        'status' => '1',
+        'mail' => 'test@example.com',
+    ];
+
+    private function mockUserAPI()
+    {
+        $this->connectorProphet->sendToAccounts('me')->willReturn($this->userData);
+    }
+
 }

@@ -37,4 +37,12 @@ class PlatformClientTest extends PlatformshTestBase
             'Load a project without a known host name.'
         );
     }
+
+    /**
+     * @covers PlatformClient::getAccountInfo
+     */
+    public function testGetAccountInfo() {
+        $account = $this->client->getAccountInfo();
+        $this->assertEquals('my_uuid', $account['id'], 'Account info successfully loaded');
+    }
 }
