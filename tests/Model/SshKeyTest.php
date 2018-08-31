@@ -15,42 +15,24 @@ class SshKeyTest extends PlatformshTestBase
         $this->sshKeys = $this->client->getSshKeys();
     }
 
-
-    /**
-     * @covers PlatformClient::getSshKeys
-     */
     public function testSshKeysLoad()
     {
         $this->assertEquals(2, count($this->sshKeys), 'Two SSH keys extracted from account info');
         $this->assertInstanceOf(SshKey::class, $this->sshKeys[0], 'SSH keys are instances of the SshKey class');
     }
 
-    /**
-     * @covers SshKey::validatePublicKey
-     */
     public function testSshKeyValidation()
     {
         $this->assertFalse(SshKey::validatePublicKey($this->sshKeys[0]->value), 'Invalid key failed the validation');
         $this->assertTrue(SshKey::validatePublicKey($this->sshKeys[1]->value), 'Valid key passed the validation');
     }
 
-    /**
-     * @covers PlatformClient::getSshKey
-     * @covers SshKey::get
-     *
-     */
     public function testSshKeyLoad()
     {
         $sshKey = $this->client->getSshKey(1);
         $this->assertEquals('aaabbb', $sshKey->fingerprint, 'A key successfully loaded from the Accounts API');
     }
 
-    /**
-     * @covers PlatformClient::addSshKey
-     * @covers SshKey::create
-     * @covers SshKey::validatePublicKey
-     *
-     */
     public function testUnsuccessfulSshKeyCreation()
     {
         $this->expectException(\InvalidArgumentException::class);

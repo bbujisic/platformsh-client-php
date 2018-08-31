@@ -7,11 +7,6 @@ use \Platformsh\Client\PlatformClient;
 class PlatformClientTest extends PlatformshTestBase
 {
 
-    /**
-     * @covers PlatformClient::getProject
-     * @covers \Platformsh\Client\Model\Project::get
-     * @covers \Platformsh\Client\Model\Project::getDirect
-     */
     public function testGetProject()
     {
         $this->assertNull(
@@ -38,17 +33,11 @@ class PlatformClientTest extends PlatformshTestBase
         );
     }
 
-    /**
-     * @covers PlatformClient::getAccountInfo
-     */
     public function testGetAccountInfo() {
         $account = $this->client->getAccountInfo();
         $this->assertEquals('my_uuid', $account['id'], 'Account info successfully loaded');
     }
 
-    /**
-     * @covers PlatformClient::getSubscriptionEstimate
-     */
     public function testSubscriptionEstimate()
     {
         $estimate = $this->client->getSubscriptionEstimate('standard', 50, 3, 3);

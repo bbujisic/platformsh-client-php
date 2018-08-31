@@ -18,19 +18,12 @@ class ProjectTest extends PlatformshTestBase
     }
 
 
-    /**
-     * @covers Project::delete
-     */
     public function testProjectDeletion()
     {
         $this->expectException(\BadMethodCallException::class);
         $this->project->delete();
     }
 
-    /**
-     * @covers Project::getSubscriptionId
-     * @covers Project::getGitUrl
-     */
     public function testPropertyGetters()
     {
         $this->assertEquals(1234, $this->project->getSubscriptionId(), 'Get subscription ID');
