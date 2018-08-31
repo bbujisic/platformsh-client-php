@@ -167,21 +167,19 @@ abstract class ApiResourceBase implements \ArrayAccess
     public static function get(PlatformClient $client, $id)
     {
         $path = static::COLLECTION_PATH.'/'.$id;
-
         try {
-            $data = $client->getConnector()->send($path);
-
+            $data = $client->getConnector()->sendToAccounts($path);
             // @todo: next level: remove url once you figure out what to do with the foundation resources?
             $url = $client->getConnector()->getAccountsEndpoint().$path;
-            return new static($data, $url, $client->getConnector()->getClient(), true);
-        } catch (BadResponseException $e) {
-            $response = $e->getResponse();
+
+            return new static($data, $url, $client, true);
+        } catch (\Exception $e) {
             // The API may throw either 404 (not found) or 422 (the requested entity id does not exist).
-            if ($response && in_array($response->getStatusCode(), [404, 422])) {
-                return false;
+            if (!in_array($e->getCode(), [404, 422])) {
+                throw $e;
             }
-            throw $e;
         }
+        return null;
     }
 
     /**
@@ -215,7 +213,7 @@ abstract class ApiResourceBase implements \ArrayAccess
 
         $uri = ($uri ?: $client->getConnector()->getAccountsEndpoint().static::COLLECTION_PATH);
 
-        $request = new Request('post', $uri, [], \GuzzleHttp\json_encode($body));
+        $request = new Request('post', $uri, ['Content-Type' => 'application/json'], \GuzzleHttp\json_encode($body));
         $data = $client->getConnector()->sendRequest($request);
 
         return new Result($data, $uri, $client, get_called_class());
