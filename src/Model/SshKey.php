@@ -8,9 +8,11 @@ namespace Platformsh\Client\Model;
  * @property-read string $title
  * @property-read int    $key_id
  * @property-read string $fingerprint
+ * @property-read string $value
  */
 class SshKey extends ApiResourceBase
 {
+    const COLLECTION_PATH = 'ssh_keys';
 
     protected static $required = ['value'];
 
@@ -22,6 +24,7 @@ class SshKey extends ApiResourceBase
         if ($property === 'value' && !self::validatePublicKey($value)) {
             return ["The SSH key is invalid"];
         }
+
         return [];
     }
 

@@ -99,31 +99,37 @@ class PlatformClient
     }
 
     /**
-     * Get the logged-in user's SSH keys.
+     * Get the SSH keys for a given UUID. Defaults to logged in account.
      *
      * @param bool $reset
      *
      * @return SshKey[]
      */
-    public function getSshKeys($reset = false)
+    public function getSshKeys(string $uuid = null, bool $reset = false): array
     {
-        $data = $this->getAccountInfo($reset);
+        if (!$uuid) {
+            $uuid = $this->getAccountInfo($reset)['id'];
+            $data = $this->getAccountInfo($reset)['ssh_keys'];
+        } else {
+            $data = $this->connector->sendToAccounts('users/'.urlencode($uuid).'/ssh_keys');
+        }
 
-        return SshKey::wrapCollection($data['ssh_keys'], $this->accountsEndpoint, $this->connector->getClient());
+        $keys = [];
+        foreach ($data as $datum) {
+            $keys[] = new SshKey($datum, 'users/'.urlencode($uuid).'/ssh_keys', $this);
+        }
+
+        return $keys;
     }
 
     /**
      * Get a single SSH key by its ID.
      *
-     * @param string|int $id
-     *
-     * @return SshKey|false
+     * @param int $id
      */
-    public function getSshKey($id)
+    public function getSshKey(int $id): ?SshKey
     {
-        $url = $this->accountsEndpoint . 'ssh_keys';
-
-        return SshKey::get($id, $url, $this->connector->getClient());
+        return SshKey::get($this, $id);
     }
 
     /**
@@ -132,14 +138,13 @@ class PlatformClient
      * @param string $value The SSH key value.
      * @param string $title A title for the key (optional).
      *
-     * @return Result
      */
-    public function addSshKey($value, $title = null)
+    // @todo: Fix the API to allow uuid's, then add an extra parameter here.
+    public function addSshKey(string $value, string $title = null): Result
     {
         $values = $this->cleanRequest(['value' => $value, 'title' => $title]);
-        $url = $this->accountsEndpoint . 'ssh_keys';
 
-        return SshKey::create($values, $url, $this->connector->getClient());
+        return SshKey::create($this, $values);
     }
 
     /**
