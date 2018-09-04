@@ -46,23 +46,6 @@ class Subscription extends ApiResourceBase
     const COLLECTION_PATH = 'subscriptions';
 
     /**
-     * {@inheritdoc}
-     *
-     * @internal Use PlatformClient::createSubscription() to create a new subscription.
-     *
-     * @see \Platformsh\Client\PlatformClient::createSubscription()
-     *
-     * @return static
-     */
-    public static function create(PlatformClient $client, array $body)
-    {
-        $result = parent::create($client, $body);
-
-        $collectionUrl = $client->getConnector()->getAccountsEndpoint().static::COLLECTION_PATH;
-        return new Subscription($result->getData(), $collectionUrl, $client->getConnector()->getClient());
-    }
-
-    /**
      * Wait for the subscription's project to be provisioned.
      *
      * @param callable  $onPoll   A function that will be called every time the

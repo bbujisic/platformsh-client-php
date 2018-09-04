@@ -25,4 +25,12 @@ $query = (new \Platformsh\Client\Query\SubscriptionQuery())
   ->includeAll();           // include other users subscriptions
   
 $subscriptions = $client->getSubscriptions($query);
+
+
+// Create a new subscription in platform.sh.
+// NB: this operation will create a new project, together with appropriate charges.
+$region = 'eu-2.platform.sh';
+$plan   = 'development';
+
+$subscription = $client->createSubscription($region, $plan);
 ```

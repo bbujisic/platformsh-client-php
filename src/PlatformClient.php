@@ -179,7 +179,7 @@ class PlatformClient
      *   similar code to wait for the subscription's project to be provisioned
      *   and activated.
      */
-    public function createSubscription($region, $plan = 'development', $title = null, $storage = null, $environments = null, array $activationCallback = null): Subscription
+    public function createSubscription($region, $plan = 'development', $title = null, $storage = null, $environments = null, array $activationCallback = null): ?Subscription
     {
         $url = $this->accountsEndpoint . 'subscriptions';
         $values = $this->cleanRequest([
@@ -191,7 +191,10 @@ class PlatformClient
           'activation_callback' => $activationCallback,
         ]);
 
-        return Subscription::create($this, $values);
+        if ($result = Subscription::create($this, $values)) {
+            return new Subscription($result->getData(), $url, $this);
+        }
+        return null;
     }
 
     /**
