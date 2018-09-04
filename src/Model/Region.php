@@ -21,6 +21,14 @@ class Region extends ApiResourceBase
     const COLLECTION_PATH = 'regions';
 
     /**
+     * Prevent deletion.
+     */
+    public function delete()
+    {
+        throw new \BadMethodCallException("Regions cannot be deleted.");
+    }
+
+    /**
      * @inheritdoc
      */
     protected function setData(array $data)
