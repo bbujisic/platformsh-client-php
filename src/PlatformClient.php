@@ -249,6 +249,14 @@ class PlatformClient
     }
 
     /**
+     * Get a region by its ID.
+     */
+    public function getRegion(string $id): ?Region
+    {
+        return Region::get($this, $id);
+    }
+
+    /**
      * Get plan records.
      *
      * @param PlanRecordQuery|null $query A query to restrict the returned plans.

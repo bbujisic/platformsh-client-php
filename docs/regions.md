@@ -10,6 +10,11 @@ $client = new Platformsh\Client\PlatformClient\PlatformClient();
 // Authenticate.
 $client->getConnector()->setApiToken($myToken, 'exchange');
 
+
+// Get a single region.
+$region = $client->getRegion("eu-2.platform.sh");
+
+
 // Get all regions.
 $regions = $client->getRegions();
 
