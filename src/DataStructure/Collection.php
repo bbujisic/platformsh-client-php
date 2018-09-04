@@ -29,13 +29,13 @@ class Collection implements \Iterator, \Countable
     private $resourceObjectName;
     // Guzzle options.
     private $options = [];
-    // Connector.
-    private $connector;
+    /** @var \Platformsh\Client\PlatformClient */
+    private $client;
 
 
     public function __construct(string $resourceObjectName, PlatformClient $client, QueryInterface $query = null)
     {
-        $this->connector = $client->getConnector();
+        $this->client = $client;
         $this->resourceObjectName = $resourceObjectName;
 
         if ($query) {
@@ -56,12 +56,11 @@ class Collection implements \Iterator, \Countable
         $options = $this->options;
         $options['query']['page'] = $page;
 
-        $data = $this->connector->send($class::COLLECTION_PATH, 'get', $options);
+        $uri = $this->client->getConnector()->getAccountsEndpoint().$class::COLLECTION_PATH;
+        $data = $this->client->getConnector()->sendToUri($uri, 'get', $options);
 
-        $url = $this->connector->getAccountsEndpoint().$class::COLLECTION_PATH;
-        $client = $this->connector->getClient();
         foreach ($data[$class::COLLECTION_NAME] as $resourceItem) {
-            $this->collection[] = new $class($resourceItem, $url, $client);
+            $this->collection[] = new $class($resourceItem, $uri, $this->client);
         }
 
         $this->countRemote = $data['count'];

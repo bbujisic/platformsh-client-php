@@ -4,11 +4,9 @@ namespace Platformsh\Client\Model;
 
 use GuzzleHttp\Exception\BadResponseException;
 use GuzzleHttp\Exception\RequestException;
-use GuzzleHttp\Psr7\Request;
 use Platformsh\Client\DataStructure\ApiCollection;
 use Platformsh\Client\PlatformClient;
 use Platformsh\Client\Query\QueryInterface;
-use Psr\Http\Message\RequestInterface;
 use Platformsh\Client\Exception\ApiResponseException;
 use Platformsh\Client\Exception\OperationUnavailableException;
 use Platformsh\Client\DataStructure\Collection;
@@ -213,8 +211,14 @@ abstract class ApiResourceBase implements \ArrayAccess
 
         $uri = ($uri ?: $client->getConnector()->getAccountsEndpoint().static::COLLECTION_PATH);
 
-        $request = new Request('post', $uri, ['Content-Type' => 'application/json'], \GuzzleHttp\json_encode($body));
-        $data = $client->getConnector()->sendRequest($request);
+        $data = $client->getConnector()->sendToUri(
+            $uri,
+            'post',
+            [
+                'headers' => ['Content-Type' => 'application/json'],
+                'body' => \GuzzleHttp\json_encode($body),
+            ]
+        );
 
         return new Result($data, $uri, $client, get_called_class());
     }
@@ -227,7 +231,7 @@ abstract class ApiResourceBase implements \ArrayAccess
         $url = $this->getLink($rel).($id ? '/'.urlencode($id) : '');
 
         try {
-            $data = $this->client->getConnector()->sendUri($url);
+            $data = $this->client->getConnector()->sendToUri($url);
 
             return new $class($data, $url, $this->client);
         } catch (RequestException $e) {
@@ -250,7 +254,7 @@ abstract class ApiResourceBase implements \ArrayAccess
         $out = [];
         $url = $this->getLink($rel);
 
-        if ($data = $this->client->getConnector()->sendUri($url)) {
+        if ($data = $this->client->getConnector()->sendToUri($url)) {
             foreach ($data as $datum) {
                 $out[] = new $class($datum, $url, $this->client);
             }
@@ -319,8 +323,7 @@ abstract class ApiResourceBase implements \ArrayAccess
         if (!empty($body)) {
             $options['json'] = $body;
         }
-        $request= new Request($method, $this->getLink("#$op"));
-        $data = $this->client->getConnector()->sendRequest($request, $options);
+        $data = $this->client->getConnector()->sendToUri($this->getLink("#$op"), $method, $options);
 
         return new Result($data, $this->baseUrl, $this->client, get_called_class());
     }
@@ -398,7 +401,7 @@ abstract class ApiResourceBase implements \ArrayAccess
      */
     public function delete()
     {
-        $data = $this->client->getConnector()->sendUri($this->getUri(), 'delete');
+        $data = $this->client->getConnector()->sendToUri($this->getUri(), 'delete');
 
         return new Result($data, $this->getUri(), $this->client, get_called_class());
     }
@@ -463,7 +466,7 @@ abstract class ApiResourceBase implements \ArrayAccess
      */
     public function refresh(array $options = [])
     {
-        $this->setData($this->client->getConnector()->sendUri($this->getUri(), 'get', $options));
+        $this->setData($this->client->getConnector()->sendToUri($this->getUri(), 'get', $options));
         $this->isFull = true;
     }
 

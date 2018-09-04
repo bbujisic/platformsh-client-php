@@ -56,6 +56,6 @@ class Integration extends ApiResourceBase
         // Switch off authentication for this request (none is required).
         $options['auth'] = null;
 
-        $this->sendRequest($hookUrl, 'post', $options);
+        $this->client->getConnector()->sendToUri($hookUrl, 'post', $options);
     }
 }

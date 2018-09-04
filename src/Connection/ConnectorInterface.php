@@ -93,15 +93,4 @@ interface ConnectorInterface
      */
     public function sendToUri(string $uri, string $method = 'get', array $options = []);
 
-    /**
-     * Send a Guzzle request.
-     *
-     * Using this method allows exceptions to be standardized.
-     *
-     * @param   Request $request    Guzzle Request object
-     * @param   array   $options    Guzzle options
-     *
-     * @return  array
-     */
-    public function sendRequest(Request $request, array $options = []);
 }

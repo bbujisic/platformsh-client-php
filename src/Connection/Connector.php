@@ -287,6 +287,41 @@ class Connector implements ConnectorInterface
     }
 
     /**
+     * {@inheritdoc}
+     */
+    public function sendToAccounts(string $resourcePath, string $method = 'get', array $options = []): array
+    {
+        return $this->sendToUri($this->getAccountsEndpoint().$resourcePath, $method, $options);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function sendToUri(string $uri, string $method = 'get', array $options = []): array
+    {
+        $response = null;
+        try {
+            $response = $this->getClient()->request($method, $uri, $options);
+            $body = $response->getBody()->getContents();
+            $data = [];
+            if ($body) {
+                $response->getBody()->seek(0);
+                $body = $response->getBody()->getContents();
+                $data = \GuzzleHttp\json_decode($body, true);
+            }
+
+            return (array)$data;
+        } catch (BadResponseException $e) {
+            throw ApiResponseException::create($e->getRequest(), $e->getResponse());
+        } catch (\InvalidArgumentException $e) {
+            throw ApiResponseException::create($request, $response);
+        }
+    }
+
+
+
+
+    /**
      * @deprecated
      */
     public function send(string $resourcePath, string $method = 'get', array $options = []): array
@@ -304,24 +339,7 @@ class Connector implements ConnectorInterface
 
     /**
      * {@inheritdoc}
-     */
-    public function sendToAccounts(string $resourcePath, string $method = 'get', array $options = []): array
-    {
-        return $this->sendUri($this->getAccountsEndpoint().$resourcePath, $method, $options);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function sendToUri(string $uri, string $method = 'get', array $options = []): array
-    {
-        $request = new Request($method, $uri);
-
-        return $this->sendRequest($request, $options);
-    }
-
-    /**
-     * {@inheritdoc}
+     * @deprecated
      */
     public function sendRequest(Request $request, array $options = []): array
     {
