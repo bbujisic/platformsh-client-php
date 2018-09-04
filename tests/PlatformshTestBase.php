@@ -31,6 +31,7 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
         $this->mockProjectAPIs();
         $this->mockUserAndSshAPI();
         $this->mockSubscriptionAPIs();
+        $this->mockRegionAPI();
 
         $this->client = new PlatformClient($this->connectorProphet->reveal());
 
@@ -133,6 +134,39 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
                 'storage' => '54 €',
             ]
         );
+    }
+
+
+    protected $regionsCollection = [
+        'count' => 4,
+        'regions' => [
+            [
+                'id'=>'region-1.example.com',
+                'label'=>'Region One',
+                'zone' => 'Europe',
+                'available'=> '1',
+                'private'=> '0',
+                '_links'=> [
+                    'self' => [
+                        'href' => 'https://accounts.example.com/api/regions/region-1.example.com'
+                    ]
+                ]
+                ],
+            ['id'=>'region-2.example.com', 'label'=>'Region Two']
+        ],
+        '_links' => [
+            'self' => [
+                'title'=>'Self',
+                'href'=>'https://accounts.example.com/api/regions',
+            ]
+        ]
+    ];
+
+    private function mockRegionAPI()
+    {
+        $this->connectorProphet->sendToAccounts('regions/region-1.example.com')->willReturn($this->regionsCollection['regions'][0]);
+        $this->connectorProphet->sendToAccounts('regions/no-region.example.com')->willThrow(new \Exception('Unprocessable Entity', 422));
+        $this->connectorProphet->sendToUri('https://accounts.example.com/api/regions', 'get', Argument::cetera())->willReturn($this->regionsCollection);
     }
 
 }
