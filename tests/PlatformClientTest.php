@@ -37,10 +37,4 @@ class PlatformClientTest extends PlatformshTestBase
         $account = $this->client->getAccountInfo();
         $this->assertEquals('my_uuid', $account['id'], 'Account info successfully loaded');
     }
-
-    public function testSubscriptionEstimate()
-    {
-        $estimate = $this->client->getSubscriptionEstimate('standard', 50, 3, 3);
-        $this->assertEquals('114 €', $estimate['total']);
-    }
 }
