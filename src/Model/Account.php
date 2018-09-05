@@ -14,4 +14,5 @@ namespace Platformsh\Client\Model;
  */
 class Account extends ApiResourceBase
 {
+    const COLLECTION_PATH = 'users';
 }

@@ -29,8 +29,7 @@ class ProjectAccess extends ApiResourceBase
     public function getAccount()
     {
         $uuid = $this->getProperty('id');
-        $url = $this->makeAbsoluteUrl('/api/users');
-        $account = Account::get($uuid, $url, $this->client);
+        $account = Account::get($this->client, $uuid);
         if (!$account) {
             throw new \Exception("Account not found for user: " . $uuid);
         }
