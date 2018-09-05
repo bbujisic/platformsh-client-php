@@ -24,11 +24,9 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
     ];
 
     public $testProjectAccess = [
-        [
-            'id' => 'my_uuid',
-            'user' => 'my_uuid',
-            'role' => 'admin'
-        ]
+        'id' => 'my_uuid',
+        'user' => 'my_uuid',
+        'role' => 'admin'
     ];
 
     public function setUp() {
@@ -49,7 +47,9 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
         // Mock existing and non-existing Region API project
         $this->connectorProphet->sendToUri('https://example.com/api/projects/test')->willReturn($this->testProject);
         $this->connectorProphet->sendToUri('https://example.com/api/projects/no-project')->willThrow(new \Exception('not found', 404));
-        $this->connectorProphet->sendToUri('https://example.com/api/projects/test/access')->willReturn($this->testProjectAccess);
+        $this->connectorProphet->sendToUri('https://example.com/api/projects/test/access')->willReturn([$this->testProjectAccess]);
+        $this->connectorProphet->sendToUri('https://example.com/api/projects/test/access/my_uuid')->willReturn($this->testProjectAccess);
+        $this->connectorProphet->sendToUri('https://example.com/api/projects/test/access', 'post', Argument::cetera())->willReturn(['status'=>'created', 'code'=>201]);
 
         // Mock existing and non-existing project in Accounts Project Locator
         // @todo: change to /locator endpoints

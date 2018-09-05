@@ -24,9 +24,9 @@ class ProjectAccessTest extends PlatformshTestBase
     }
 
     public function testGetters() {
-        $this->assertEquals($this->testProjectAccess[0]['id'], $this->projectAccess->id, 'Id property getter');
-        $this->assertEquals($this->testProjectAccess[0]['user'], $this->projectAccess->user, 'User property getter');
-        $this->assertEquals($this->testProjectAccess[0]['role'], $this->projectAccess->role, 'Role property getter');
+        $this->assertEquals($this->testProjectAccess['id'], $this->projectAccess->id, 'Id property getter');
+        $this->assertEquals($this->testProjectAccess['user'], $this->projectAccess->user, 'User property getter');
+        $this->assertEquals($this->testProjectAccess['role'], $this->projectAccess->role, 'Role property getter');
     }
 
     public function testGetAccount() {
