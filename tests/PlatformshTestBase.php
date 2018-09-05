@@ -23,6 +23,14 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
         ]
     ];
 
+    public $testProjectAccess = [
+        [
+            'id' => 'my_uuid',
+            'user' => 'my_uuid',
+            'role' => 'admin'
+        ]
+    ];
+
     public function setUp() {
         $this->connectorProphet = $this->prophesize(ConnectorInterface::class);
         // Mock getAccountsEndpont
@@ -41,6 +49,7 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
         // Mock existing and non-existing Region API project
         $this->connectorProphet->sendToUri('https://example.com/api/projects/test')->willReturn($this->testProject);
         $this->connectorProphet->sendToUri('https://example.com/api/projects/no-project')->willThrow(new \Exception('not found', 404));
+        $this->connectorProphet->sendToUri('https://example.com/api/projects/test/access')->willReturn($this->testProjectAccess);
 
         // Mock existing and non-existing project in Accounts Project Locator
         // @todo: change to /locator endpoints
@@ -72,6 +81,7 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
     private function mockUserAndSshAPI()
     {
         $this->connectorProphet->sendToAccounts('me')->willReturn($this->userData);
+        $this->connectorProphet->sendToAccounts('users/my_uuid')->willReturn($this->userData);
         $this->connectorProphet->sendToUri('https://accounts.example.com/api/users/my_uuid')->willReturn($this->userData);
         $this->connectorProphet->sendToAccounts("ssh_keys/1")->willReturn($this->userData['ssh_keys'][0]);
 
