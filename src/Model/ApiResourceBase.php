@@ -249,12 +249,17 @@ abstract class ApiResourceBase implements \ArrayAccess
      *
      * @return ApiResourceBase[]
      */
-    protected function getLinkedResources(string $rel, string $class): ?array
+    protected function getLinkedResources(string $rel, string $class, QueryInterface $query = null): ?array
     {
         $out = [];
         $url = $this->getLink($rel);
 
-        if ($data = $this->client->getConnector()->sendToUri($url)) {
+        $options = [];
+        if($query) {
+            $options['query'] = $query->getParams();
+        }
+
+        if ($data = $this->client->getConnector()->sendToUri($url, 'get', $options)) {
             foreach ($data as $datum) {
                 $out[] = new $class($datum, $url, $this->client);
             }
