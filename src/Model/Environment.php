@@ -7,6 +7,8 @@ use Platformsh\Client\Exception\EnvironmentStateException;
 use Platformsh\Client\Exception\OperationUnavailableException;
 use Platformsh\Client\Model\Deployment\EnvironmentDeployment;
 use Platformsh\Client\Model\Git\Commit;
+use Platformsh\Client\Query\ActivityQuery;
+use Platformsh\Client\Traits\DependentResourceTrait;
 
 /**
  * A Platform.sh environment.
@@ -55,12 +57,10 @@ class Environment extends ApiResourceBase
      * Get the current deployment of this environment.
      *
      * @throws \RuntimeException if no current deployment is found.
-     *
-     * @return EnvironmentDeployment
      */
-    public function getCurrentDeployment()
+    public function getCurrentDeployment(): ?EnvironmentDeployment
     {
-        $deployment = EnvironmentDeployment::get('current', $this->getUri() . '/deployments', $this->client);
+        $deployment = $this->getLinkedResource('deployments', EnvironmentDeployment::class, 'current');
         if (!$deployment) {
             throw new EnvironmentStateException('Current deployment not found', $this);
         }
@@ -70,14 +70,15 @@ class Environment extends ApiResourceBase
 
     /**
      * Get the Git commit for the HEAD of this environment.
-     *
-     * @return Commit|false
      */
-    public function getHeadCommit()
+    public function getHeadCommit(): ?Commit
     {
-        $base = Project::getProjectBaseFromUrl($this->getUri()) . '/git/commits';
+        $base = Project::getProjectBaseFromUrl($this->getUri()).'/git/commits';
 
-        return Commit::get($this->head_commit, $base, $this->client);
+        $data = $this->client->getConnector()->sendToUri($base.'/'.$this->head_commit);
+        if ($data) {
+            return new Commit($data, $base, $this->client);
+        }
     }
 
     /**
@@ -163,6 +164,7 @@ class Environment extends ApiResourceBase
      *
      * @throws EnvironmentStateException
      *
+     * @codeCoverageIgnore
      * @deprecated You should use routes to get the correct URL(s)
      * @see        self::getRouteUrls()
      *
@@ -193,7 +195,7 @@ class Environment extends ApiResourceBase
      *
      * @return Activity
      */
-    public function branch($title, $id = null, $cloneParent = true)
+    public function branch($title, $id = null, $cloneParent = true): Activity
     {
         $id = $id ?: $this->sanitizeId($title);
         $body = ['name' => $id, 'title' => $title];
@@ -219,6 +221,7 @@ class Environment extends ApiResourceBase
     /**
      * Validate an environment ID.
      *
+     * @codeCoverageIgnore
      * @deprecated This is no longer necessary and will be removed in future
      * versions.
      *
@@ -336,7 +339,7 @@ class Environment extends ApiResourceBase
      *
      * @return Activity
      */
-    public function backup()
+    public function backup(): Activity
     {
         return $this->runLongOperation('backup');
     }
@@ -345,58 +348,30 @@ class Environment extends ApiResourceBase
      * Get a single environment activity.
      *
      * @param string $id
-     *
-     * @return Activity|false
      */
-    public function getActivity($id)
+    public function getActivity($id): ?Activity
     {
-        return Activity::get($id, $this->getUri() . '/activities', $this->client);
+        return $this->getLinkedResource('activities', Activity::class, $id);
     }
 
     /**
      * Get a list of environment activities.
      *
-     * @param int    $limit
-     *   Limit the number of activities to return.
-     * @param string $type
-     *   Filter activities by type.
-     * @param int    $startsAt
-     *   A UNIX timestamp for the maximum created date of activities to return.
-     *
      * @return Activity[]
      */
-    public function getActivities($limit = 0, $type = null, $startsAt = null)
+    public function getActivities(ActivityQuery $query = null): array
     {
-        $options = [];
-        if ($type !== null) {
-            $options['query']['type'] = $type;
-        }
-        if ($startsAt !== null) {
-            $options['query']['starts_at'] = Activity::formatStartsAt($startsAt);
-        }
-
-        $activities = Activity::getCollection($this->getUri() . '/activities', $limit, $options, $this->client);
-
-        // Guarantee the type filter (works around a temporary bug).
-        if ($type !== null) {
-            $activities = array_filter($activities, function (Activity $activity) use ($type) {
-                return $activity->type === $type;
-            });
-        }
-
-        return $activities;
+        return $this->getLinkedResources('activities', Activity::class, $query);
     }
 
     /**
      * Get a list of variables.
      *
-     * @param int $limit
-     *
      * @return Variable[]
      */
-    public function getVariables($limit = 0)
+    public function getVariables(): array
     {
-        return Variable::getCollection($this->getLink('#manage-variables'), $limit, [], $this->client);
+        return $this->getLinkedResources('#manage-variables', Variable::class);
     }
 
     /**
@@ -416,7 +391,7 @@ class Environment extends ApiResourceBase
         $json = false,
         $enabled = true,
         $sensitive = false
-    )
+    ): Result
     {
         if (!is_scalar($value)) {
             $value = json_encode($value);
@@ -432,19 +407,15 @@ class Environment extends ApiResourceBase
         }
         $values['name'] = $name;
 
-        return Variable::create($values, $this->getLink('#manage-variables'), $this->client);
+        return Variable::create($this->client, $values, $this->getLink('#manage-variables'));
     }
 
     /**
      * Get a single variable.
-     *
-     * @param string $id
-     *
-     * @return Variable|false
      */
-    public function getVariable($id)
+    public function getVariable(string $id): ?Variable
     {
-        return Variable::get($id, $this->getLink('#manage-variables'), $this->client);
+        return $this->getLinkedResource('#manage-variables', Variable::class, $id);
     }
 
     /**
@@ -454,9 +425,9 @@ class Environment extends ApiResourceBase
      *
      * @return Route[]
      */
-    public function getRoutes()
+    public function getRoutes(): array
     {
-        return Route::getCollection($this->getLink('#manage-routes'), 0, [], $this->client);
+        return $this->getLinkedResources('#manage-routes', Route::class);
     }
 
     /**
@@ -504,12 +475,10 @@ class Environment extends ApiResourceBase
      * Get a user's access to this environment.
      *
      * @param string $uuid
-     *
-     * @return EnvironmentAccess|false
      */
-    public function getUser($uuid)
+    public function getUser(string $uuid): ?EnvironmentAccess
     {
-        return EnvironmentAccess::get($uuid, $this->getLink('#manage-access'), $this->client);
+        return $this->getLinkedResource('#manage-access', EnvironmentAccess::class, $uuid);
     }
 
     /**
@@ -517,9 +486,9 @@ class Environment extends ApiResourceBase
      *
      * @return EnvironmentAccess[]
      */
-    public function getUsers()
+    public function getUsers(): array
     {
-        return EnvironmentAccess::getCollection($this->getLink('#manage-access'), 0, [], $this->client);
+        return $this->getLinkedResources('#manage-access', EnvironmentAccess::class);
     }
 
     /**
@@ -535,12 +504,12 @@ class Environment extends ApiResourceBase
      *
      * @return Result
      */
-    public function addUser($user, $role, $byUuid = true)
+    public function addUser(string $user, string $role, bool $byUuid = true): Result
     {
         $property = $byUuid ? 'user' : 'email';
         $body = [$property => $user, 'role' => $role];
 
-        return EnvironmentAccess::create($body, $this->getLink('#manage-access'), $this->client);
+        return EnvironmentAccess::create($this->client, $body, $this->getLink('#manage-access'));
     }
 
     /**
@@ -548,8 +517,20 @@ class Environment extends ApiResourceBase
      *
      * @return Activity
      */
-    public function redeploy()
+    public function redeploy(): Activity
     {
         return $this->runLongOperation('redeploy');
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function getLink($rel, $absolute = true)
+    {
+        if ($this->hasLink($rel)) {
+            return parent::getLink($rel, $absolute);
+        }
+
+        return $this->getUri() . '/' . ltrim($rel, '#');
     }
 }

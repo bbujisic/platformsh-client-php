@@ -14,6 +14,9 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
     /** @var PlatformClient */
     public $client;
 
+    // All resources will go here as part of an effort to reduce the chaos in the class.
+    public $data;
+
     public $testProject = [
         "id" => "test",
         'title' => 'Test project',
@@ -44,12 +47,54 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
     }
 
     private function mockProjectAPIs() {
+        $c = $this->connectorProphet;
+
+        $this->data['env_d'] = [
+            'id' => 'development',
+            'name' =>'development',
+            'parent'=>'master',
+            'status'=>'active',
+            'head_commit'=>'aaaabbbbcccc',
+            '_links' => [
+                'self' => ['href'=>'https://example.com/api/projects/test/environments/development'],
+                'pf:ssh:app' => ['href'=> "ssh://aaaabbbb-development-cccc--app@ssh.example.com"],
+                'ssh' => ['href'=> "ssh://aaaabbbb-development-cccc--app@ssh.example.com"],
+                '#branch' => ['href'=> '/api/projects/test/environments/development/branch']
+            ]
+        ];
+        $this->data['deployment_current'] = [
+            'id' => 'current',
+            'services'=> [],
+            'routes' => [],
+            'webapps' => [],
+            'workers' => []
+        ];
+        $this->data['head_commit'] = [
+            'id' => 'aaaabbbbcccc',
+            'sha' => 'aaaabbbbcccc',
+            'author'=> [],
+            'committer' => [],
+            'message' => 'Hello world.',
+        ];
+
+        $this->data['branch_response'] = [
+            'status' => 'OK',
+            'code' => 200,
+            '_embedded' => [
+                'activities' => [['id' => 'activity_id', 'type' => 'environment_branch']],
+            ]
+        ];
+
         // Mock existing and non-existing Region API project
-        $this->connectorProphet->sendToUri('https://example.com/api/projects/test')->willReturn($this->testProject);
-        $this->connectorProphet->sendToUri('https://example.com/api/projects/no-project')->willThrow(new \Exception('not found', 404));
-        $this->connectorProphet->sendToUri('https://example.com/api/projects/test/access')->willReturn([$this->testProjectAccess]);
-        $this->connectorProphet->sendToUri('https://example.com/api/projects/test/access/my_uuid')->willReturn($this->testProjectAccess);
-        $this->connectorProphet->sendToUri('https://example.com/api/projects/test/access', 'post', Argument::cetera())->willReturn(['status'=>'created', 'code'=>201]);
+        $c->sendToUri('https://example.com/api/projects/test')->willReturn($this->testProject);
+        $c->sendToUri('https://example.com/api/projects/no-project')->willThrow(new \Exception('not found', 404));
+        $c->sendToUri('https://example.com/api/projects/test/access', Argument::cetera())->willReturn([$this->testProjectAccess]);
+        $c->sendToUri('https://example.com/api/projects/test/access/my_uuid')->willReturn($this->testProjectAccess);
+        $c->sendToUri('https://example.com/api/projects/test/access', 'post', Argument::cetera())->willReturn(['status'=>'created', 'code'=>201]);
+        $c->sendToUri('https://example.com/api/projects/test/environments/development')->willReturn($this->data['env_d']);
+        $c->sendToUri('https://example.com/api/projects/test/environments/development/deployments/current')->willReturn($this->data['deployment_current']);
+        $c->sendToUri('https://example.com/api/projects/test/git/commits/aaaabbbbcccc')->willReturn($this->data['head_commit']);
+        $c->sendToUri('https://example.com/api/projects/test/environments/development/branch', 'post', Argument::cetera())->willReturn($this->data['branch_response']);
 
         // Mock existing and non-existing project in Accounts Project Locator
         // @todo: change to /locator endpoints
