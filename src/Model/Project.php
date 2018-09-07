@@ -389,15 +389,7 @@ class Project extends ApiResourceBase
      */
     public function getCertificates()
     {
-        // @todo @see getActivities() and optimize.
-        $data = $this->client->getConnector()->sendToUri($this->getUri().'/certificates');
-
-        $certificates = [];
-        foreach ($data as $datum) {
-            $certificates[] = new Certificate($datum, $this->getUri().'/certificates', $this->client);
-        }
-
-        return $certificates;
+        return $this->getLinkedResources('certificates', Certificate::class);
     }
 
     /**
@@ -405,19 +397,7 @@ class Project extends ApiResourceBase
      */
     public function getCertificate(string $id): ?Certificate
     {
-        // @todo @see getActivity() and optimize.
-        try {
-            $data = $this->client->getConnector()->sendToUri($this->getUri().'/certificates/'.urlencode($id));
-        } catch (ClientException $e) {
-            $response = $e->getResponse();
-            // The API may throw either 404 (not found) or 422 (the requested entity id does not exist).
-            if ($response && in_array($response->getStatusCode(), [404, 422])) {
-                return null;
-            }
-            throw $e;
-        }
-
-        return new Certificate($data, $this->getUri() . '/certificates/' . urlencode($id), $this->client);
+        return $this->getLinkedResource('certificates', Certificate::class, $id);
     }
 
     /**

@@ -60,6 +60,25 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
             ]
         ];
 
+        $this->data['project_certificates'] = [
+            [
+                'id' => 'my-certificate',
+                'expires_at' => '2018-01-01T00:00:00+00:00',
+                'domains' => [
+                    'www.example.com',
+                    'example.com',
+                ],
+            ],
+            [
+                'id' => 'my-other-certificate',
+                'expires_at' => '2019-01-01T00:00:00+00:00',
+                'domains' => [
+                    'www.example.com',
+                    'example.com',
+                ],
+            ],
+        ];
+
         $this->data['env_d'] = [
             'id' => 'development',
             'name' =>'development',
@@ -68,8 +87,8 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
             'head_commit'=>'aaaabbbbcccc',
             '_links' => [
                 'self' => ['href'=>'https://example.com/api/projects/test/environments/development'],
-                'pf:ssh:app' => ['href'=> "ssh://aaaabbbb-development-cccc--app@ssh.example.com"],
-                'ssh' => ['href'=> "ssh://aaaabbbb-development-cccc--app@ssh.example.com"],
+                'pf:ssh:app' => ['href'=> 'ssh://aaaabbbb-development-cccc--app@ssh.example.com'],
+                'ssh' => ['href'=> 'ssh://aaaabbbb-development-cccc--app@ssh.example.com'],
                 '#branch' => ['href'=> '/api/projects/test/environments/development/branch']
             ]
         ];
@@ -106,6 +125,10 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
         $c->sendToUri('https://example.com/api/projects/test/activities', Argument::cetera())->willReturn($this->data['project_activities']);
         $c->sendToUri('https://example.com/api/projects/test/activities/my-activity', Argument::cetera())->willReturn($this->data['project_activities'][0]);
         $c->sendToUri('https://example.com/api/projects/test/activities/no-activity', Argument::cetera())->willThrow(new \Exception('not found', 404));
+
+        $c->sendToUri('https://example.com/api/projects/test/certificates', Argument::cetera())->willReturn($this->data['project_certificates']);
+        $c->sendToUri('https://example.com/api/projects/test/certificates/my-certificate', Argument::cetera())->willReturn($this->data['project_certificates'][0]);
+        $c->sendToUri('https://example.com/api/projects/test/certificates/no-certificate', Argument::cetera())->willThrow(new \Exception('not found', 404));
 
         $c->sendToUri('https://example.com/api/projects/test/environments/development')->willReturn($this->data['env_d']);
         $c->sendToUri('https://example.com/api/projects/test/environments/development/deployments/current')->willReturn($this->data['deployment_current']);
@@ -193,9 +216,9 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
         $this->connectorProphet->sendToUri('https://accounts.example.com/api/subscriptions/1234', 'delete')->willReturn([]);
 
         $this->connectorProphet->sendToAccounts(
-            "estimate",
-            "get",
-            ["query" => ["plan" => "standard", "storage" => 50, "environments" => 3, "user_licenses" => 3]]
+            'estimate',
+            'get',
+            ['query' => ['plan' => 'standard', 'storage' => 50, 'environments' => 3, 'user_licenses' => 3]]
         )->willReturn(
             [
                 'plan' => '40 €',

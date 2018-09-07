@@ -4,6 +4,7 @@ namespace Platformsh\Client\Tests\Model;
 
 
 use Platformsh\Client\Model\Activity;
+use Platformsh\Client\Model\Certificate;
 use Platformsh\Client\Model\ProjectAccess;
 use Platformsh\Client\Model\Result;
 use Platformsh\Client\Tests\PlatformshTestBase;
@@ -76,8 +77,17 @@ class ProjectTest extends PlatformshTestBase
 //    public function testGetVariables() {}
 //    public function testGetVariable() {}
 //    public function testSetVariable() {}
-//    public function testGetCertificates() {}
-//    public function testGetCertificate() {}
+    public function testGetCertificates() {
+        $certs = $this->project->getCertificates();
+        foreach ($certs as $cert) {
+            $this->assertInstanceOf(Certificate::class, $cert, 'Project::getCertificates returns an array of Certificates');
+        }
+    }
+    public function testGetCertificate() {
+        $this->assertInstanceOf(Certificate::class, $this->project->getCertificate('my-certificate'), 'Project::getCertificate returns an instance of Certificate');
+        $this->assertNull($this->project->getCertificate('no-certificate'), 'Project::getCertificate returns null if ID does not exist');
+
+    }
 //    public function testAddCertificate() {}
 //    public function testGetProjectBaseFromUrl() {}
 //    public function testClearBuildCache() {}
