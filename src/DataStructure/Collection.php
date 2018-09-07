@@ -31,12 +31,22 @@ class Collection implements \Iterator, \Countable
     private $options = [];
     /** @var \Platformsh\Client\PlatformClient */
     private $client;
+    // The uri of the collection.
+    private $uri;
 
 
+    /**
+     * Collection constructor.
+     *
+     * @param string         $resourceObjectName Class name of the objects to be instantiated and put into the collection.
+     * @param PlatformClient $client
+     * @param QueryInterface $query
+     */
     public function __construct(string $resourceObjectName, PlatformClient $client, QueryInterface $query = null)
     {
         $this->client = $client;
         $this->resourceObjectName = $resourceObjectName;
+        $this->uri = $this->client->getConnector()->getAccountsEndpoint().$resourceObjectName::COLLECTION_PATH;
 
         if ($query) {
             $this->options['query'] = $query->getParams();
@@ -56,11 +66,10 @@ class Collection implements \Iterator, \Countable
         $options = $this->options;
         $options['query']['page'] = $page;
 
-        $uri = $this->client->getConnector()->getAccountsEndpoint().$class::COLLECTION_PATH;
-        $data = $this->client->getConnector()->sendToUri($uri, 'get', $options);
+        $data = $this->client->getConnector()->sendToUri($this->uri, 'get', $options);
 
         foreach ($data[$class::COLLECTION_NAME] as $resourceItem) {
-            $this->collection[] = new $class($resourceItem, $uri, $this->client);
+            $this->collection[] = new $class($resourceItem, $this->uri, $this->client);
         }
 
         $this->countRemote = $data['count'];
