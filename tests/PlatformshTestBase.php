@@ -41,6 +41,7 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
         $this->mockUserAndSshAPI();
         $this->mockSubscriptionAPIs();
         $this->mockRegionAPI();
+        $this->mockBillingAPI();
 
         $this->client = new PlatformClient($this->connectorProphet->reveal());
 
@@ -160,6 +161,10 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
                 'value' => 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDHZ9RDuT6/e8/Mmj7ufDAp+elYYONRUhjIPn+zHlzuWeyolFFcbIUdMeT+t0+nK1AvZxK4EPQ+BNtcAv2vBg3HpKuaje7MLESA/6iPW8b6FPbn/fgwEXOQJmT9o/SJe6S5c/80pzeQpesWUJsb8Cdkj7edd41uEtk5SaR4cNwpslYLF8gymUOcSre4yxzROSIcAEEvyTOKf+uc3HFZRuprOZ1TxqjtamQPouBKe9p95zlgX4XycJ2avNqu2Q0zfZrONkCO+IjtPI1WwsSG7OyM6JY/ciAp1kRWs3/pOzXogftqtF6z/1/kwnZ+9TUN5MuNeTRtCYBROI/HFPMcvBDz',
             ],
         ],
+        'projects' => [
+            ['id'=>'my-first-project', 'endpoint' => 'https://example.com/api/projects/my-first-project'],
+            ['id'=>'my-second-project', 'endpoint' => 'https://example.com/api/projects/my-second-project',],
+        ]
     ];
 
     private function mockUserAndSshAPI()
@@ -167,6 +172,7 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
         $this->connectorProphet->sendToAccounts('me')->willReturn($this->userData);
         $this->connectorProphet->sendToUri('https://accounts.example.com/api/users/my_uuid')->willReturn($this->userData);
         $this->connectorProphet->sendToUri('https://accounts.example.com/api/users/my_uuid')->willReturn($this->userData);
+        $this->connectorProphet->sendToAccounts('users/my_uuid/ssh_keys')->willReturn($this->userData['ssh_keys']);
         $this->connectorProphet->sendToUri('https://accounts.example.com/api/ssh_keys/1')->willReturn($this->userData['ssh_keys'][0]);
 
     }
@@ -261,6 +267,23 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
         $this->connectorProphet->sendToUri('https://accounts.example.com/api/regions/region-1.example.com')->willReturn($this->regionsCollection['regions'][0]);
         $this->connectorProphet->sendToUri('https://accounts.example.com/api/regions/no-region.example.com')->willThrow(new \Exception('Unprocessable Entity', 422));
         $this->connectorProphet->sendToUri('https://accounts.example.com/api/regions', 'get', Argument::cetera())->willReturn($this->regionsCollection);
+    }
+
+    private function mockBillingAPI() {
+        $this->data['records_plan'] = [
+            'count' => 4,
+            'plan' => [
+                ['id' => '111'],
+                ['id' => '222'],
+            ],
+            '_links' => [
+                'self' => [
+                    'title' => 'Self',
+                    'href' => 'https://accounts.example.com/api/regions',
+                ],
+            ],
+        ];
+        $this->connectorProphet->sendToUri("https://accounts.example.com/api/records/plan", 'get', Argument::cetera())->willReturn($this->data['records_plan']);
     }
 
 }

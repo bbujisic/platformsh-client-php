@@ -76,11 +76,10 @@ class PlatformClient
     public function getProjects($reset = false)
     {
         $data = $this->getAccountInfo($reset);
-        $client = $this->connector->getClient();
         $projects = [];
         foreach ($data['projects'] as $project) {
             // Each project has its own endpoint on a Platform.sh region.
-            $projects[] = new Project($project, $project['endpoint'], $client);
+            $projects[] = new Project($project, $project['endpoint'], $this);
         }
 
         return $projects;
@@ -265,13 +264,6 @@ class PlatformClient
      */
     public function getPlanRecords(PlanRecordQuery $query = null)
     {
-        $url = $this->accountsEndpoint . 'records/plan';
-        $options = [];
-
-        if ($query) {
-            $options['query'] = $query->getParams();
-        }
-
-        return PlanRecord::getCollection($url, 0, $options, $this->connector->getClient());
+        return PlanRecord::getCollection($this, $query);
     }
 }

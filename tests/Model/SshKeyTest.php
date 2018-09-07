@@ -19,6 +19,8 @@ class SshKeyTest extends PlatformshTestBase
     {
         $this->assertEquals(2, count($this->sshKeys), 'Two SSH keys extracted from account info');
         $this->assertInstanceOf(SshKey::class, $this->sshKeys[0], 'SSH keys are instances of the SshKey class');
+
+        $this->client->getSshKeys('my_uuid');
     }
 
     public function testSshKeyValidation()

@@ -2,7 +2,11 @@
 
 namespace Platformsh\Client\Tests;
 
+use Platformsh\Client\DataStructure\Collection;
+use Platformsh\Client\Model\Billing\PlanRecord;
+use Platformsh\Client\Model\Project;
 use \Platformsh\Client\PlatformClient;
+use Platformsh\Client\Query\PlanRecordQuery;
 
 class PlatformClientTest extends PlatformshTestBase
 {
@@ -36,5 +40,24 @@ class PlatformClientTest extends PlatformshTestBase
     public function testGetAccountInfo() {
         $account = $this->client->getAccountInfo();
         $this->assertEquals('my_uuid', $account['id'], 'Account info successfully loaded');
+    }
+
+    public function testGetProjects() {
+        $projects = $this->client->getProjects();
+        foreach ($projects as $project) {
+            $this->assertInstanceOf(Project::class, $project, 'PlatformClient::getProjects loads an array of Projects.');
+
+        }
+    }
+
+    public function testGetPlanRecords() {
+        $prophet = $this->prophesize(PlanRecordQuery::class);
+        $prophet->getParams()->willReturn([]);
+        $collection = $this->client->getPlanRecords();
+
+        $this->assertInstanceOf(Collection::class, $collection, 'PlatformClient::getPlanRecords returns Collection.');
+        foreach ($collection as $item) {
+            $this->assertInstanceOf(PlanRecord::class, $item, 'PlatformClient::getPlanRecords returns collection of PlanRecords.');
+        }
     }
 }
