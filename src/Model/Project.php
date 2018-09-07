@@ -5,6 +5,7 @@ namespace Platformsh\Client\Model;
 use GuzzleHttp\Exception\ClientException;
 use function GuzzleHttp\Psr7\uri_for;
 use Platformsh\Client\PlatformClient;
+use Platformsh\Client\Query\ActivityQuery;
 
 /**
  * A Platform.sh project.
@@ -288,43 +289,11 @@ class Project extends ApiResourceBase
     /**
      * Get a list of project activities.
      *
-     * @param int $limit
-     *   Limit the number of activities to return.
-     * @param string $type
-     *   Filter activities by type.
-     * @param int $startsAt
-     *   A UNIX timestamp for the maximum created date of activities to return.
-     *
      * @return Activity[]
      */
-    public function getActivities($limit = 0, $type = null, $startsAt = null)
+    public function getActivities(ActivityQuery $query = null): array
     {
-        // @todo: $startsAt doesn't work.
-        // @todo: $limit doesn't work.
-        $options = [];
-        if ($type !== null) {
-            $options['query']['type'] = $type;
-        }
-        if ($startsAt !== null) {
-            $options['query']['starts_at'] = Activity::formatStartsAt($startsAt);
-        }
-
-        // This should clearly be abstracted. Ideally, this should be Activity::getCollection($client, $url, $query)
-        $data = $this->client->getConnector()->sendToUri($this->getUri() . '/activities', 'get', $options);
-
-        $activities = [];
-        foreach ($data as $datum) {
-            $activities[] = new Activity($datum, $this->getUri() . '/activities', $this->client);
-        }
-
-        // Guarantee the type filter (works around a temporary bug).
-        if ($type !== null) {
-            $activities = array_filter($activities, function (Activity $activity) use ($type) {
-                return $activity->type === $type;
-            });
-        }
-
-        return $activities;
+        return $this->getLinkedResources('activities', Activity::class, $query);
     }
 
     /**
