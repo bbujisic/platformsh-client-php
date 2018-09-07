@@ -23,11 +23,7 @@ class Tree extends ApiResourceBase
     {
         $uri = Project::getProjectBaseFromUrl($baseUrl).'/git/trees';
 
-        if ($data = $client->getConnector()->sendToUri($uri)) {
-            return new static($data, $uri, $client);
-        }
-
-        return null;
+        return static::getDirect($client, $uri);
     }
 
     /**

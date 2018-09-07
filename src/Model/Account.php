@@ -2,6 +2,8 @@
 
 namespace Platformsh\Client\Model;
 
+use Platformsh\Client\Model\Accounts\AccountsApiResourceBase;
+
 /**
  * Account information for a Platform.sh user.
  *
@@ -12,7 +14,7 @@ namespace Platformsh\Client\Model;
  * @property-read string $display_name
  * @property-read string $email
  */
-class Account extends ApiResourceBase
+class Account extends AccountsApiResourceBase
 {
     const COLLECTION_PATH = 'users';
 }

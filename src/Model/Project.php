@@ -36,24 +36,6 @@ class Project extends ApiResourceBase
     }
 
     /**
-     * Bypass the project locator if the project location is already known.
-     */
-    public static function getDirect(PlatformClient $client, string $location): ?self
-    {
-        try {
-            $data = $client->getConnector()->sendToUri($location);
-
-            return new static($data, $location, $client, true);
-        } catch (\Exception $e) {
-            // The API may throw either 404 (not found) or 422 (the requested entity id does not exist).
-            if (!in_array($e->getCode(), [404, 422])) {
-                throw $e;
-            }
-        }
-        return null;
-    }
-
-    /**
      * Locate a project by ID.
      */
     public static function locate(PlatformClient $client, $id): ?string
@@ -297,10 +279,10 @@ class Project extends ApiResourceBase
      */
     public function getActivity(string $id): ?Activity
     {
-        // @todo: abstract away!!! Optimally, I want to construct the activity with `Activity::get($client, $url)`
-        $data = $this->client->getConnector()->sendToUri($this->getUri() . '/activities/' . urlencode($id));
+        $uri = $this->getUri().'/activities/'.urlencode($id);
 
-        return new Activity($data, $this->getUri() . '/activities/' . urlencode($id), $this->client);
+        return Activity::getDirect($this->client, $uri);
+
     }
 
     /**

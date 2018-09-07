@@ -8,7 +8,6 @@ use Platformsh\Client\Exception\OperationUnavailableException;
 use Platformsh\Client\Model\Deployment\EnvironmentDeployment;
 use Platformsh\Client\Model\Git\Commit;
 use Platformsh\Client\Query\ActivityQuery;
-use Platformsh\Client\Traits\DependentResourceTrait;
 
 /**
  * A Platform.sh environment.
@@ -74,11 +73,9 @@ class Environment extends ApiResourceBase
     public function getHeadCommit(): ?Commit
     {
         $base = Project::getProjectBaseFromUrl($this->getUri()).'/git/commits';
+        $uri = $base.'/'.$this->head_commit;
 
-        $data = $this->client->getConnector()->sendToUri($base.'/'.$this->head_commit);
-        if ($data) {
-            return new Commit($data, $base, $this->client);
-        }
+        return Commit::getDirect($this->client, $uri);
     }
 
     /**

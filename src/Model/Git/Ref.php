@@ -26,10 +26,7 @@ class Ref extends ApiResourceBase
     {
         $uri = $project->getUri().'/git/refs/'.$refName;
 
-        if ($data = $client->getConnector()->sendToUri($uri)) {
-            return new static($data, $uri, $client);
-        }
-        return null;
+        return static::getDirect($client, $uri);
     }
 
     /**
@@ -43,10 +40,6 @@ class Ref extends ApiResourceBase
         }
         $uri = Project::getProjectBaseFromUrl($this->getUri()).'/git/commits/'.$data['sha'];
 
-        if ($data = $client->getConnector()->sendToUri($uri)) {
-            return new static($data, $uri, $client);
-        }
-
-        return null;
+        return static::getDirect($client, $uri);
     }
 }

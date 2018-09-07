@@ -3,6 +3,7 @@
 namespace Platformsh\Client\Model;
 
 use GuzzleHttp\ClientInterface;
+use Platformsh\Client\Model\Accounts\AccountsApiResourceBase;
 use Platformsh\Client\PlatformClient;
 
 /**
@@ -27,7 +28,7 @@ use Platformsh\Client\PlatformClient;
  * @property-read array  $services
  * @property-read string $support_tier
  */
-class Subscription extends ApiResourceBase
+class Subscription extends AccountsApiResourceBase
 {
 
     public static $availablePlans = ['development', 'standard', 'medium', 'large'];

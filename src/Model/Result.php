@@ -9,6 +9,9 @@ use Platformsh\Client\PlatformClient;
  */
 class Result extends ApiResourceBase
 {
+
+    const COLLECTION_PATH = 'regions';
+
     protected $resourceClass;
 
     /**

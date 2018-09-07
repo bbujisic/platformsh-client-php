@@ -17,9 +17,6 @@ use Platformsh\Client\DataStructure\Collection;
 abstract class ApiResourceBase implements \ArrayAccess
 {
 
-    const COLLECTION_NAME = NULL;
-    const COLLECTION_PATH = NULL;
-
     /** @var array */
     protected static $required = [];
 
@@ -89,7 +86,8 @@ abstract class ApiResourceBase implements \ArrayAccess
      *
      * @return bool
      */
-    public function __isset($name) {
+    public function __isset($name)
+    {
         return $this->hasProperty($name);
     }
 
@@ -157,55 +155,66 @@ abstract class ApiResourceBase implements \ArrayAccess
     /**
      * Get a resource by its ID.
      *
-     * @param PlatformClient $client  A suitably configured Platform client.
-     * @param string|int     $id      The ID of the resource.
+     * @param PlatformClient $client A suitably configured Platform client.
+     * @param string|int     $uri    The ID of the resource.
      *
-     * @return static|false The resource object, or false if the resource is not found.
+     * @return static|null The resource object, or false if the resource is not found.
      */
-    public static function get(PlatformClient $client, $id)
+    public static function getDirect(PlatformClient $client, $uri): ?ApiResourceBase
     {
-        $path = static::COLLECTION_PATH.'/'.$id;
         try {
-            $data = $client->getConnector()->sendToAccounts($path);
-            // @todo: next level: remove url once you figure out what to do with the foundation resources?
-            $url = $client->getConnector()->getAccountsEndpoint().$path;
+            $data = $client->getConnector()->sendToUri($uri);
 
-            return new static($data, $url, $client, true);
+            return new static($data, $uri, $client, true);
         } catch (\Exception $e) {
             // The API may throw either 404 (not found) or 422 (the requested entity id does not exist).
             if (!in_array($e->getCode(), [404, 422])) {
                 throw $e;
             }
         }
+
         return null;
     }
 
     /**
      * Get a collection of resources.
      *
-     * @param PlatformClient $client  A suitably configured Platform client.
-     * @param QueryInterface $query   An instance of query interface. It will be used to build a guzzle query.
+     * @param PlatformClient $client A suitably configured Platform client.
+     * @param QueryInterface $query  An instance of query interface. It will be used to build a guzzle query.
      *
      * @return Collection;
      */
-    public static function getCollection(PlatformClient $client, ?QueryInterface $query = null)
+    public static function getCollectionDirect(PlatformClient $client, $uri, QueryInterface $query = null)
     {
-        return new Collection(static::class, $client, $query);
+        $out = [];
+
+        $options = [];
+        if ($query) {
+            $options['query'] = $query->getParams();
+        }
+
+        if ($data = $client->getConnector()->sendToUri($uri, 'get', $options)) {
+            foreach ($data as $datum) {
+                $out[] = new static($datum, $uri, $client);
+            }
+        }
+
+        return $out;
     }
 
     /**
      * Create a resource.
      *
-     * @param PlatformClient  $client
-     * @param array           $body
-     * @param string          $uri    If not provided, a default uri will be generated from entity collection path.
+     * @param PlatformClient $client
+     * @param array          $body
+     * @param string         $uri If not provided, a default uri will be generated from entity collection path.
      *
      * @return Result
      */
     public static function create(PlatformClient $client, array $body, string $uri = null)
     {
         if ($errors = static::checkNew($body)) {
-            $message = "Cannot create resource due to validation error(s): " . implode('; ', $errors);
+            $message = "Cannot create resource due to validation error(s): ".implode('; ', $errors);
             throw new \InvalidArgumentException($message);
         }
 
@@ -230,18 +239,7 @@ abstract class ApiResourceBase implements \ArrayAccess
     {
         $url = $this->getLink($rel).($id ? '/'.urlencode($id) : '');
 
-        try {
-            $data = $this->client->getConnector()->sendToUri($url);
-
-            return new $class($data, $url, $this->client);
-        } catch (RequestException $e) {
-            $response = $e->getResponse();
-            // The API may throw either 404 (not found) or 422 (the requested entity id does not exist).
-            if ($response && in_array($response->getStatusCode(), [404, 422])) {
-                return null;
-            }
-            throw $e;
-        }
+        return $class::getDirect($this->client, $url);
     }
 
     /**
@@ -251,21 +249,9 @@ abstract class ApiResourceBase implements \ArrayAccess
      */
     protected function getLinkedResources(string $rel, string $class, QueryInterface $query = null): ?array
     {
-        $out = [];
         $url = $this->getLink($rel);
 
-        $options = [];
-        if($query) {
-            $options['query'] = $query->getParams();
-        }
-
-        if ($data = $this->client->getConnector()->sendToUri($url, 'get', $options)) {
-            foreach ($data as $datum) {
-                $out[] = new $class($datum, $url, $this->client);
-            }
-        }
-
-        return $out;
+        return $class::getCollectionDirect($this->client, $url, $query);
     }
 
     /**
@@ -289,11 +275,12 @@ abstract class ApiResourceBase implements \ArrayAccess
     {
         $errors = [];
         if ($missing = array_diff(static::getRequired(), array_keys($data))) {
-            $errors[] = 'Missing: ' . implode(', ', $missing);
+            $errors[] = 'Missing: '.implode(', ', $missing);
         }
         foreach ($data as $key => $value) {
             $errors += static::checkProperty($key, $value);
         }
+
         return $errors;
     }
 
@@ -357,7 +344,7 @@ abstract class ApiResourceBase implements \ArrayAccess
      * Check whether a property exists in the resource.
      *
      * @param string $property
-     * @param bool $lazyLoad
+     * @param bool   $lazyLoad
      *
      * @return bool
      */
@@ -393,6 +380,7 @@ abstract class ApiResourceBase implements \ArrayAccess
             if ($required) {
                 throw new \InvalidArgumentException("Property not found: $property");
             }
+
             return null;
         }
 
@@ -424,7 +412,7 @@ abstract class ApiResourceBase implements \ArrayAccess
     public function update(array $values)
     {
         if ($errors = $this->checkUpdate($values)) {
-            $message = "Cannot update resource due to validation error(s): " . implode('; ', $errors);
+            $message = "Cannot update resource due to validation error(s): ".implode('; ', $errors);
             throw new \InvalidArgumentException($message);
         }
         $data = $this->runOperation('edit', 'patch', $values)->getData();
@@ -449,6 +437,7 @@ abstract class ApiResourceBase implements \ArrayAccess
         foreach ($values as $key => $value) {
             $errors += static::checkProperty($key, $value);
         }
+
         return $errors;
     }
 
@@ -524,6 +513,7 @@ abstract class ApiResourceBase implements \ArrayAccess
         if ($absolute && strpos($url, '//') === false) {
             $url = $this->makeAbsoluteUrl($url);
         }
+
         return $url;
     }
 
@@ -554,6 +544,7 @@ abstract class ApiResourceBase implements \ArrayAccess
     public function getPropertyNames()
     {
         $keys = array_filter(array_keys($this->data), [$this, 'isProperty']);
+
         return $keys;
     }
 

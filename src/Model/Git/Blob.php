@@ -31,12 +31,7 @@ class Blob extends ApiResourceBase
     public static function fromSha(string $sha, string $baseUrl, PlatformClient $client): ?self
     {
         $uri = Project::getProjectBaseFromUrl($baseUrl).'/git/blobs';
-
-        if ($data = $client->getConnector()->sendToUri($uri)) {
-            return new static($data, $uri, $client);
-        }
-
-        return null;
+        return static::getDirect($client, $uri);
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace Platformsh\Client\Model;
 
 use GuzzleHttp\ClientInterface;
+use Platformsh\Client\Model\Accounts\AccountsApiResourceBase;
 
 /**
  * Represents a Platform.sh region.
@@ -14,7 +15,7 @@ use GuzzleHttp\ClientInterface;
  * @property-read string $zone
  * @property-read string $endpoint
  */
-class Region extends ApiResourceBase
+class Region extends AccountsApiResourceBase
 {
     // @todo: Move these constants to methods, so that they can be documented in an appropriate interface.
     const COLLECTION_NAME = 'regions';
