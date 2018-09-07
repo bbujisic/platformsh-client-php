@@ -3,6 +3,7 @@
 namespace Platformsh\Client\Tests\Model;
 
 
+use Platformsh\Client\Model\Activity;
 use Platformsh\Client\Model\ProjectAccess;
 use Platformsh\Client\Model\Result;
 use Platformsh\Client\Tests\PlatformshTestBase;
@@ -58,8 +59,19 @@ class ProjectTest extends PlatformshTestBase
 //    public function testGetIntegrations() {}
 //    public function testGetIntegration() {}
 //    public function testAddIntegration() {}
-//    public function testGetActivities() {}
-//    public function testGetActivity() {}
+    public function testGetActivities()
+    {
+        $activities = $this->project->getActivities();
+        foreach ($activities as $activity) {
+            $this->assertInstanceOf(Activity::class, $activity, 'Project::getActivities returns an instance of Activity');
+        }
+    }
+
+    public function testGetActivity()
+    {
+        $this->assertInstanceOf(Activity::class, $this->project->getActivity('my-activity'), 'Project::getActivity returns an instance of Activity');
+        $this->assertNull($this->project->getActivity('no-activity'), 'Project::getActivity returns null if ID does not exist');
+    }
 //    public function testIsSuspended() {}
 //    public function testGetVariables() {}
 //    public function testGetVariable() {}

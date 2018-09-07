@@ -49,6 +49,17 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
     private function mockProjectAPIs() {
         $c = $this->connectorProphet;
 
+        $this->data['project_activities'] = [
+            [
+                'id' => 'my-activity',
+                'type' => 'environment.push'
+            ],
+            [
+                'id'=>'my-another-activity',
+                'type'=>'project.domain.create'
+            ]
+        ];
+
         $this->data['env_d'] = [
             'id' => 'development',
             'name' =>'development',
@@ -91,6 +102,11 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
         $c->sendToUri('https://example.com/api/projects/test/access', Argument::cetera())->willReturn([$this->testProjectAccess]);
         $c->sendToUri('https://example.com/api/projects/test/access/my_uuid')->willReturn($this->testProjectAccess);
         $c->sendToUri('https://example.com/api/projects/test/access', 'post', Argument::cetera())->willReturn(['status'=>'created', 'code'=>201]);
+
+        $c->sendToUri('https://example.com/api/projects/test/activities', Argument::cetera())->willReturn($this->data['project_activities']);
+        $c->sendToUri('https://example.com/api/projects/test/activities/my-activity', Argument::cetera())->willReturn($this->data['project_activities'][0]);
+        $c->sendToUri('https://example.com/api/projects/test/activities/no-activity', Argument::cetera())->willThrow(new \Exception('not found', 404));
+
         $c->sendToUri('https://example.com/api/projects/test/environments/development')->willReturn($this->data['env_d']);
         $c->sendToUri('https://example.com/api/projects/test/environments/development/deployments/current')->willReturn($this->data['deployment_current']);
         $c->sendToUri('https://example.com/api/projects/test/git/commits/aaaabbbbcccc')->willReturn($this->data['head_commit']);
@@ -126,9 +142,9 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
     private function mockUserAndSshAPI()
     {
         $this->connectorProphet->sendToAccounts('me')->willReturn($this->userData);
-        $this->connectorProphet->sendToAccounts('users/my_uuid')->willReturn($this->userData);
         $this->connectorProphet->sendToUri('https://accounts.example.com/api/users/my_uuid')->willReturn($this->userData);
-        $this->connectorProphet->sendToAccounts("ssh_keys/1")->willReturn($this->userData['ssh_keys'][0]);
+        $this->connectorProphet->sendToUri('https://accounts.example.com/api/users/my_uuid')->willReturn($this->userData);
+        $this->connectorProphet->sendToUri('https://accounts.example.com/api/ssh_keys/1')->willReturn($this->userData['ssh_keys'][0]);
 
     }
 
@@ -170,8 +186,8 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
 
     private function mockSubscriptionAPIs()
     {
-        $this->connectorProphet->sendToAccounts('subscriptions/1234')->willReturn($this->subscriptionData);
-        $this->connectorProphet->sendToAccounts('subscriptions/4321')->willThrow(new \Exception('not found', 404));
+        $this->connectorProphet->sendToUri('https://accounts.example.com/api/subscriptions/1234')->willReturn($this->subscriptionData);
+        $this->connectorProphet->sendToUri('https://accounts.example.com/api/subscriptions/4321')->willThrow(new \Exception('not found', 404));
         $this->connectorProphet->sendToUri('https://accounts.example.com/api/subscriptions', 'get', Argument::cetera())->willReturn($this->subscriptionCollection);
         $this->connectorProphet->sendToUri('https://accounts.example.com/api/subscriptions', 'post', Argument::cetera())->willReturn($this->subscriptionData);
         $this->connectorProphet->sendToUri('https://accounts.example.com/api/subscriptions/1234', 'delete')->willReturn([]);
@@ -219,8 +235,8 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
 
     private function mockRegionAPI()
     {
-        $this->connectorProphet->sendToAccounts('regions/region-1.example.com')->willReturn($this->regionsCollection['regions'][0]);
-        $this->connectorProphet->sendToAccounts('regions/no-region.example.com')->willThrow(new \Exception('Unprocessable Entity', 422));
+        $this->connectorProphet->sendToUri('https://accounts.example.com/api/regions/region-1.example.com')->willReturn($this->regionsCollection['regions'][0]);
+        $this->connectorProphet->sendToUri('https://accounts.example.com/api/regions/no-region.example.com')->willThrow(new \Exception('Unprocessable Entity', 422));
         $this->connectorProphet->sendToUri('https://accounts.example.com/api/regions', 'get', Argument::cetera())->willReturn($this->regionsCollection);
     }
 
