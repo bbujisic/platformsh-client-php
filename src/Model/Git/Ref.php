@@ -5,6 +5,7 @@ namespace Platformsh\Client\Model\Git;
 use GuzzleHttp\ClientInterface;
 use Platformsh\Client\Model\Project;
 use Platformsh\Client\Model\ApiResourceBase;
+use Platformsh\Client\PlatformClient;
 
 /**
  * Git ref resource.
@@ -20,33 +21,32 @@ class Ref extends ApiResourceBase
 {
     /**
      * Get a Ref object in a project.
-     *
-     * @param string          $refName
-     * @param Project         $project
-     * @param ClientInterface $client
-     *
-     * @return static|false
      */
-    public static function fromName($refName, Project $project, ClientInterface $client)
+    public static function fromName(string $refName, Project $project, PlatformClient $client): ?self
     {
-        $url = $project->getUri() . '/git/refs';
+        $uri = $project->getUri().'/git/refs/'.$refName;
 
-        return static::get($refName, $url, $client);
+        if ($data = $client->getConnector()->sendToUri($uri)) {
+            return new static($data, $uri, $client);
+        }
+        return null;
     }
 
     /**
      * Get the commit for this ref.
-     *
-     * @return Commit|false
      */
-    public function getCommit()
+    public function getCommit(): ?Commit
     {
         $data = $this->object;
         if ($data['type'] !== 'commit') {
             throw new \RuntimeException('This ref is not a commit');
         }
-        $url = Project::getProjectBaseFromUrl($this->getUri()) . '/git/commits';
+        $uri = Project::getProjectBaseFromUrl($this->getUri()).'/git/commits/'.$data['sha'];
 
-        return Commit::get($data['sha'], $url, $this->client);
+        if ($data = $client->getConnector()->sendToUri($uri)) {
+            return new static($data, $uri, $client);
+        }
+
+        return null;
     }
 }

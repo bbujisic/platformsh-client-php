@@ -2,7 +2,7 @@
 
 namespace Platformsh\Client\Model\Git;
 
-use GuzzleHttp\ClientInterface;
+use Platformsh\Client\PlatformClient;
 use Platformsh\Client\Exception\GitObjectTypeException;
 use Platformsh\Client\Model\Project;
 use Platformsh\Client\Model\ApiResourceBase;
@@ -18,18 +18,16 @@ class Tree extends ApiResourceBase
 {
     /**
      * Get the Tree object for an SHA hash.
-     *
-     * @param string          $sha
-     * @param string          $baseUrl
-     * @param ClientInterface $client
-     *
-     * @return static|false
      */
-    public static function fromSha($sha, $baseUrl, ClientInterface $client)
+    public static function fromSha(string $sha, string $baseUrl, PlatformClient $client): ?self
     {
-        $url = Project::getProjectBaseFromUrl($baseUrl) . '/git/trees';
+        $uri = Project::getProjectBaseFromUrl($baseUrl).'/git/trees';
 
-        return static::get($sha, $url, $client);
+        if ($data = $client->getConnector()->sendToUri($uri)) {
+            return new static($data, $uri, $client);
+        }
+
+        return null;
     }
 
     /**
