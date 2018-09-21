@@ -5,6 +5,7 @@ namespace Platformsh\Client\Model\Accounts;
 use Platformsh\Client\DataStructure\Collection;
 use Platformsh\Client\Model\ApiResourceBase;
 use Platformsh\Client\PlatformClient;
+use Platformsh\Client\Query\QueryInterface;
 
 abstract class AccountsApiResourceBase extends ApiResourceBase
 {
@@ -35,7 +36,7 @@ abstract class AccountsApiResourceBase extends ApiResourceBase
      *
      * @return Collection;
      */
-    public static function getCollection(PlatformClient $client, ?QueryInterface $query = null)
+    public static function getCollection(PlatformClient $client, QueryInterface $query = null)
     {
         return new Collection(static::class, $client, $query);
     }
