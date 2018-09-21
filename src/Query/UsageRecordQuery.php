@@ -52,4 +52,16 @@ class UsageRecordQuery extends Query
         return $this;
     }
 
+    /**
+     * Restrict the query to a single usage group.
+     *
+     * @param string|null $usageGroup
+     */
+    public function setPlanRecord(int $planRecord = null): self
+    {
+        $this->setFilter('plan_record', $planRecord);
+
+        return $this;
+    }
+
 }

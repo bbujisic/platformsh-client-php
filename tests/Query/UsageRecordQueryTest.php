@@ -22,10 +22,12 @@ class UsageRecordQueryTest extends PlatformshTestBase
         $owner = 'tester-testowsky';
         $vendor = 'test';
         $subscriptionId = 1234;
+        $planRecord = 234;
         $this->query->setPeriod(new \DateTime('1990-01-01T00:00:00+00:00'), new \DateTime('1990-01-02T00:00:00+00:00'));
         $this->query->setOwner($owner);
         $this->query->setVendor($vendor);
         $this->query->setSubscriptionId($subscriptionId);
+        $this->query->setPlanRecord($planRecord);
 
         $this->query->setUsageGroup('storage');
         $this->query->setUsageGroup('environments');
@@ -41,12 +43,14 @@ class UsageRecordQueryTest extends PlatformshTestBase
         $this->assertEquals($owner, $params['filter']['owner'], 'Owner filter set.');
         $this->assertEquals($vendor, $params['filter']['vendor'], 'Vendor filter set.');
         $this->assertEquals($subscriptionId, $params['filter']['subscription_id'], 'Subscription ID filter set.');
+        $this->assertEquals($planRecord, $params['filter']['plan_record'], 'Plan record filter set.');
         $this->assertEquals('user_licenses', $params['filter']['usage_group'], 'Usage group filter set.');
 
         $this->query->setPeriod();
         $this->query->setOwner();
         $this->query->setVendor();
         $this->query->setSubscriptionId();
+        $this->query->setPlanRecord();
         $this->query->setUsageGroup();
 
         $this->assertEmpty($this->query->getParams(), 'All filters unset.');
