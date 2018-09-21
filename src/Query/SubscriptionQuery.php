@@ -5,11 +5,13 @@ namespace Platformsh\Client\Query;
 
 use Platformsh\Client\Query\Param\OwnerFilterTrait;
 use Platformsh\Client\Query\Param\AllTrait;
+use Platformsh\Client\Query\Param\VendorFilterTrait;
 
 class SubscriptionQuery extends Query
 {
 
     use OwnerFilterTrait;
+    use VendorFilterTrait;
     use AllTrait;
 
     /**
@@ -37,18 +39,4 @@ class SubscriptionQuery extends Query
 
         return $this;
     }
-
-    /**
-     * Restrict the query to a vendor.
-     * Vendor name will not be validated and
-     *
-     * @param string|null $vendorName
-     */
-    public function setVendor(?string $vendorName): self
-    {
-        $this->setFilter('vendor', $vendorName);
-
-        return $this;
-    }
-
 }

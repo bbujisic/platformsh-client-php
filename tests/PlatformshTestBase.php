@@ -279,11 +279,26 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
             '_links' => [
                 'self' => [
                     'title' => 'Self',
-                    'href' => 'https://accounts.example.com/api/regions',
+                    'href' => 'https://accounts.example.com/api/records/plan',
                 ],
             ],
         ];
         $this->connectorProphet->sendToUri("https://accounts.example.com/api/records/plan", 'get', Argument::cetera())->willReturn($this->data['records_plan']);
+
+        $this->data['records_usage'] = [
+            'count' => 2,
+            'usage' => [
+                ['id' => '111'],
+                ['id' => '222'],
+            ],
+            '_links' => [
+                'self' => [
+                    'title' => 'Self',
+                    'href' => 'https://accounts.example.com/api/records/usage',
+                ],
+            ],
+        ];
+        $this->connectorProphet->sendToUri("https://accounts.example.com/api/records/usage", 'get', Argument::cetera())->willReturn($this->data['records_usage']);
     }
 
 }

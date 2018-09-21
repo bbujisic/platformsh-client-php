@@ -7,9 +7,9 @@ trait OwnerFilterTrait
     /**
      * Restrict the query to an owner's ID.
      *
-     * @param array|string|null $owner
+     * @param string|null $owner
      */
-    public function setOwner($owner): self
+    public function setOwner($owner = null): self
     {
         $this->setFilter('owner', $owner);
 

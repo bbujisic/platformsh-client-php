@@ -4,9 +4,11 @@ namespace Platformsh\Client\Tests;
 
 use Platformsh\Client\DataStructure\Collection;
 use Platformsh\Client\Model\Billing\PlanRecord;
+use Platformsh\Client\Model\Billing\UsageRecord;
 use Platformsh\Client\Model\Project;
 use \Platformsh\Client\PlatformClient;
 use Platformsh\Client\Query\PlanRecordQuery;
+use Platformsh\Client\Query\UsageRecordQuery;
 
 class PlatformClientTest extends PlatformshTestBase
 {
@@ -60,4 +62,16 @@ class PlatformClientTest extends PlatformshTestBase
             $this->assertInstanceOf(PlanRecord::class, $item, 'PlatformClient::getPlanRecords returns collection of PlanRecords.');
         }
     }
+
+    public function testGetUsageRecords() {
+        $prophet = $this->prophesize(UsageRecordQuery::class);
+        $prophet->getParams()->willReturn([]);
+        $collection = $this->client->getUsageRecords();
+
+        $this->assertInstanceOf(Collection::class, $collection, 'PlatformClient::getUsageRecords returns Collection.');
+        foreach ($collection as $item) {
+            $this->assertInstanceOf(UsageRecord::class, $item, 'PlatformClient::getUsageRecords returns collection of UsageRecords.');
+        }
+    }
+
 }

@@ -8,6 +8,7 @@ use Platformsh\Client\Connection\ConnectorInterface;
 use Platformsh\Client\DataStructure\Collection;
 use Platformsh\Client\Exception\ApiResponseException;
 use Platformsh\Client\Model\Billing\PlanRecord;
+use Platformsh\Client\Model\Billing\UsageRecord;
 use Platformsh\Client\Model\Project;
 use Platformsh\Client\Model\Region;
 use Platformsh\Client\Model\Result;
@@ -16,6 +17,7 @@ use Platformsh\Client\Model\Subscription;
 use Platformsh\Client\Query\PlanRecordQuery;
 use Platformsh\Client\Query\RegionQuery;
 use Platformsh\Client\Query\SubscriptionQuery;
+use Platformsh\Client\Query\UsageRecordQuery;
 
 class PlatformClient
 {
@@ -266,4 +268,18 @@ class PlatformClient
     {
         return PlanRecord::getCollection($this, $query);
     }
+
+    /**
+     * Get usage records.
+     *
+     * @param UsageRecordQuery|null $query A query to restrict the returned plans.
+     *
+     * @return UsageRecord[]
+     */
+    public function getUsageRecords(UsageRecordQuery $query = null): Collection
+    {
+        return UsageRecord::getCollection($this, $query);
+    }
+
+
 }
