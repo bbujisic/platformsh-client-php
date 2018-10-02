@@ -7,6 +7,7 @@ use Platformsh\Client\Connection\Connector;
 use Platformsh\Client\Connection\ConnectorInterface;
 use Platformsh\Client\DataStructure\Collection;
 use Platformsh\Client\Exception\ApiResponseException;
+use Platformsh\Client\Model\Account;
 use Platformsh\Client\Model\Billing\PlanRecord;
 use Platformsh\Client\Model\Billing\UsageRecord;
 use Platformsh\Client\Model\Project;
@@ -98,6 +99,18 @@ class PlatformClient
 
         return $this->accountInfo;
     }
+
+  /**
+   * Get an account by its UUID.
+   *
+   * @param string $uuid
+   *
+   * @return Account|false
+   */
+    public function getAccount($uuid) {
+      return Account::get($this, $uuid);
+    }
+
 
     /**
      * Get the SSH keys for a given UUID. Defaults to logged in account.
