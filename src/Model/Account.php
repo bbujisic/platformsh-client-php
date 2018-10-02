@@ -12,7 +12,7 @@ use Platformsh\Client\Model\Accounts\AccountsApiResourceBase;
  * @property-read string $updated_at
  * @property-read bool   $has_key
  * @property-read string $display_name
- * @property-read string $email
+ * @property-read string $mail
  */
 class Account extends AccountsApiResourceBase
 {
