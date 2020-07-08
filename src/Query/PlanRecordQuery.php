@@ -19,6 +19,8 @@ class PlanRecordQuery extends Query
     {
         $this->setFilter('start', ($start !== null ? $start->format('c') : null));
         $this->setFilter('end', ($end !== null ? $end->format('c') : null));
+
+        return $this;
     }
 
     /**
@@ -29,6 +31,20 @@ class PlanRecordQuery extends Query
     public function setPlan($plan)
     {
         $this->setFilter('plan', $plan);
+
+        return $this;
+    }
+
+    /**
+     * Restrict the query to a single subscription.
+     *
+     * @param int|null $subscriptionId
+     */
+    public function setSubscriptionId(int $subscriptionId = null): self
+    {
+        $this->setFilter('subscription_id', $subscriptionId);
+
+        return $this;
     }
 
 }
