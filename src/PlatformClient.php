@@ -5,14 +5,22 @@ namespace Platformsh\Client;
 use GuzzleHttp\Exception\BadResponseException;
 use Platformsh\Client\Connection\Connector;
 use Platformsh\Client\Connection\ConnectorInterface;
+use Platformsh\Client\DataStructure\Collection;
 use Platformsh\Client\Exception\ApiResponseException;
+use Platformsh\Client\Model\Account;
 use Platformsh\Client\Model\Billing\PlanRecord;
-use Platformsh\Client\Model\Billing\PlanRecordQuery;
+use Platformsh\Client\Model\Billing\UsageRecord;
 use Platformsh\Client\Model\Project;
 use Platformsh\Client\Model\Region;
 use Platformsh\Client\Model\Result;
 use Platformsh\Client\Model\SshKey;
 use Platformsh\Client\Model\Subscription;
+use Platformsh\Client\Query\PlanRecordQuery;
+use Platformsh\Client\Query\RegionQuery;
+use Platformsh\Client\Query\SubscriptionQuery;
+use Platformsh\Client\Query\TrialQuery;
+use Platformsh\Client\Query\UsageRecordQuery;
+use Platformsh\Client\Model\Trial;
 
 class PlatformClient
 {
@@ -45,33 +53,19 @@ class PlatformClient
 
     /**
      * Get a single project by its ID.
-     *
-     * @param string $id
-     * @param string $hostname
-     * @param bool   $https
-     *
-     * @return Project|false
      */
-    public function getProject($id, $hostname = null, $https = true)
+    public function getProject(string $id, string $hostname = null, bool $https = true): ?Project
     {
-        // Search for a project in the user's project list.
-        foreach ($this->getProjects() as $project) {
-            if ($project->id === $id) {
-                return $project;
-            }
-        }
-
         // Look for a project directly if the hostname is known.
         if ($hostname !== null) {
-            return $this->getProjectDirect($id, $hostname, $https);
+            $scheme = $https ? 'https' : 'http';
+            $id = urlencode($id);
+
+            return Project::getDirect($this, "$scheme://$hostname/api/projects/$id");
         }
 
-        // Use the project locator.
-        if ($url = $this->locateProject($id)) {
-            return Project::get($url, null, $this->connector->getClient());
-        }
-
-        return false;
+        // Otherwise, use the project locator.
+        return Project::get($this, $id);
     }
 
     /**
@@ -80,15 +74,17 @@ class PlatformClient
      * @param bool $reset
      *
      * @return Project[]
+     *
+     * @deprecated
+     *   Use getSubscriptions instead.
      */
     public function getProjects($reset = false)
     {
         $data = $this->getAccountInfo($reset);
-        $client = $this->connector->getClient();
         $projects = [];
         foreach ($data['projects'] as $project) {
             // Each project has its own endpoint on a Platform.sh region.
-            $projects[] = new Project($project, $project['endpoint'], $client);
+            $projects[] = new Project($project, $project['endpoint'], $this);
         }
 
         return $projects;
@@ -96,120 +92,60 @@ class PlatformClient
 
     /**
      * Get account information for the logged-in user.
-     *
-     * @param bool $reset
-     *
-     * @return array
      */
-    public function getAccountInfo($reset = false)
+    public function getAccountInfo($reset = false): array
     {
         if (!isset($this->accountInfo) || $reset) {
-            $url = $this->accountsEndpoint . 'me';
-            try {
-                $this->accountInfo = $this->simpleGet($url);
-            }
-            catch (BadResponseException $e) {
-                throw ApiResponseException::create($e->getRequest(), $e->getResponse(), $e->getPrevious());
-            }
+            $this->accountInfo = $this->getConnector()->sendToAccounts('me');
         }
 
         return $this->accountInfo;
     }
 
-    /**
-     * Get a URL and return the JSON-decoded response.
-     *
-     * @param string $url
-     * @param array  $options
-     *
-     * @return array
-     */
-    private function simpleGet($url, array $options = [])
-    {
-        return (array) \GuzzleHttp\json_decode(
-          $this->getConnector()
-               ->getClient()
-               ->request('get', $url, $options)
-               ->getBody()
-               ->getContents(),
-          true
-        );
+  /**
+   * Get an account by its UUID.
+   *
+   * @param string $uuid
+   *
+   * @return Account|false
+   */
+    public function getAccount($uuid) {
+      return Account::get($this, $uuid);
     }
 
-    /**
-     * Get a single project at a known location.
-     *
-     * @param string $id       The project ID.
-     * @param string $hostname The hostname of the Platform.sh regional API,
-     *                         e.g. 'eu.platform.sh' or 'us.platform.sh'.
-     * @param bool   $https    Whether to use HTTPS (default: true).
-     *
-     * @internal It's now better to use getProject(). This method will be made
-     *           private in a future release.
-     *
-     * @return Project|false
-     */
-    public function getProjectDirect($id, $hostname, $https = true)
-    {
-        $scheme = $https ? 'https' : 'http';
-        $collection = "$scheme://$hostname/api/projects";
-        return Project::get($id, $collection, $this->connector->getClient());
-    }
 
     /**
-     * Locate a project by ID.
-     *
-     * @param string $id
-     *   The project ID.
-     *
-     * @return string
-     *   The project's API endpoint.
-     */
-    protected function locateProject($id)
-    {
-        $url = $this->accountsEndpoint . 'projects/' . rawurlencode($id);
-        try {
-            $result = $this->simpleGet($url);
-        }
-        catch (BadResponseException $e) {
-            $response = $e->getResponse();
-            // @todo Remove 400 from this array when the API is more liberal in validating project IDs.
-            $ignoredErrorCodes = [400, 403, 404];
-            if ($response && in_array($response->getStatusCode(), $ignoredErrorCodes)) {
-                return false;
-            }
-            throw ApiResponseException::create($e->getRequest(), $e->getResponse(), $e->getPrevious());
-        }
-
-        return isset($result['endpoint']) ? $result['endpoint'] : false;
-    }
-
-    /**
-     * Get the logged-in user's SSH keys.
+     * Get the SSH keys for a given UUID. Defaults to logged in account.
      *
      * @param bool $reset
      *
      * @return SshKey[]
      */
-    public function getSshKeys($reset = false)
+    public function getSshKeys(string $uuid = null, bool $reset = false): array
     {
-        $data = $this->getAccountInfo($reset);
+        if (!$uuid) {
+            $uuid = $this->getAccountInfo($reset)['id'];
+            $data = $this->getAccountInfo($reset)['ssh_keys'];
+        } else {
+            $data = $this->connector->sendToAccounts('users/'.urlencode($uuid).'/ssh_keys');
+        }
 
-        return SshKey::wrapCollection($data['ssh_keys'], $this->accountsEndpoint, $this->connector->getClient());
+        $keys = [];
+        foreach ($data as $datum) {
+            $keys[] = new SshKey($datum, 'users/'.urlencode($uuid).'/ssh_keys', $this);
+        }
+
+        return $keys;
     }
 
     /**
      * Get a single SSH key by its ID.
      *
-     * @param string|int $id
-     *
-     * @return SshKey|false
+     * @param int $id
      */
-    public function getSshKey($id)
+    public function getSshKey(int $id): ?SshKey
     {
-        $url = $this->accountsEndpoint . 'ssh_keys';
-
-        return SshKey::get($id, $url, $this->connector->getClient());
+        return SshKey::get($this, $id);
     }
 
     /**
@@ -218,14 +154,13 @@ class PlatformClient
      * @param string $value The SSH key value.
      * @param string $title A title for the key (optional).
      *
-     * @return Result
      */
-    public function addSshKey($value, $title = null)
+    // @todo: Fix the API to allow uuid's, then add an extra parameter here.
+    public function addSshKey(string $value, string $title = null): Result
     {
         $values = $this->cleanRequest(['value' => $value, 'title' => $title]);
-        $url = $this->accountsEndpoint . 'ssh_keys';
 
-        return SshKey::create($values, $url, $this->connector->getClient());
+        return SshKey::create($this, $values);
     }
 
     /**
@@ -260,7 +195,7 @@ class PlatformClient
      *   similar code to wait for the subscription's project to be provisioned
      *   and activated.
      */
-    public function createSubscription($region, $plan = 'development', $title = null, $storage = null, $environments = null, array $activationCallback = null)
+    public function createSubscription($region, $plan = 'development', $title = null, $storage = null, $environments = null, array $activationCallback = null): ?Subscription
     {
         $url = $this->accountsEndpoint . 'subscriptions';
         $values = $this->cleanRequest([
@@ -272,7 +207,10 @@ class PlatformClient
           'activation_callback' => $activationCallback,
         ]);
 
-        return Subscription::create($values, $url, $this->connector->getClient());
+        if ($result = Subscription::create($this, $values)) {
+            return new Subscription($result->getData(), $url, $this);
+        }
+        return null;
     }
 
     /**
@@ -280,23 +218,17 @@ class PlatformClient
      *
      * @return Subscription[]
      */
-    public function getSubscriptions()
+    public function getSubscriptions(?SubscriptionQuery $query = null): Collection
     {
-        $url = $this->accountsEndpoint . 'subscriptions';
-        return Subscription::getCollection($url, 0, [], $this->connector->getClient());
+        return Subscription::getCollection($this, $query);
     }
 
     /**
      * Get a subscription by its ID.
-     *
-     * @param string|int $id
-     *
-     * @return Subscription|false
      */
-    public function getSubscription($id)
+    public function getSubscription(int $id): ?Subscription
     {
-        $url = $this->accountsEndpoint . 'subscriptions';
-        return Subscription::get($id, $url, $this->connector->getClient());
+        return Subscription::get($this, $id);
     }
 
     /**
@@ -309,7 +241,7 @@ class PlatformClient
      *
      * @return array An array containing at least 'total' (a formatted price).
      */
-    public function getSubscriptionEstimate($plan, $storage, $environments, $users)
+    public function getSubscriptionEstimate(string $plan, int $storage, int $environments, int $users): array
     {
         $options = [];
         $options['query'] = [
@@ -318,11 +250,8 @@ class PlatformClient
             'environments' => $environments,
             'user_licenses' => $users,
         ];
-        try {
-            return $this->simpleGet($this->accountsEndpoint . 'estimate', $options);
-        } catch (BadResponseException $e) {
-            throw ApiResponseException::create($e->getRequest(), $e->getResponse(), $e->getPrevious());
-        }
+
+        return $this->getConnector()->sendToAccounts('estimate', 'get', $options);
     }
 
     /**
@@ -330,9 +259,17 @@ class PlatformClient
      *
      * @return Region[]
      */
-    public function getRegions()
+    public function getRegions(RegionQuery $query = null): Collection
     {
-        return Region::getCollection($this->accountsEndpoint . 'regions', 0, [], $this->getConnector()->getClient());
+        return Region::getCollection($this, $query);
+    }
+
+    /**
+     * Get a region by its ID.
+     */
+    public function getRegion(string $id): ?Region
+    {
+        return Region::get($this, $id);
     }
 
     /**
@@ -344,13 +281,43 @@ class PlatformClient
      */
     public function getPlanRecords(PlanRecordQuery $query = null)
     {
-        $url = $this->accountsEndpoint . 'records/plan';
-        $options = [];
-
-        if ($query) {
-            $options['query'] = $query->getParams();
-        }
-
-        return PlanRecord::getCollection($url, 0, $options, $this->connector->getClient());
+        return PlanRecord::getCollection($this, $query);
     }
+
+    /**
+     * Get usage records.
+     *
+     * @param UsageRecordQuery|null $query A query to restrict the returned plans.
+     *
+     * @return UsageRecord[]
+     */
+    public function getUsageRecords(UsageRecordQuery $query = null): Collection
+    {
+        return UsageRecord::getCollection($this, $query);
+    }
+
+    /**
+     * Get a list of Platform.sh trials.
+     *
+     * @param TrialQuery|null $query
+     *
+     * @return Collection
+     */
+    public function getTrials(TrialQuery $query = null)
+    {
+        return Trial::getCollection($this, $query);
+    }
+
+    /**
+     * Get a trial by its ID.
+     *
+     * @param int $id
+     *
+     * @return Trial|false
+     */
+    public function getTrial($id)
+    {
+        return Trial::get($this, $id);
+    }
+
 }

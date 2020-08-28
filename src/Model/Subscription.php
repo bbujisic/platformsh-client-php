@@ -3,6 +3,8 @@
 namespace Platformsh\Client\Model;
 
 use GuzzleHttp\ClientInterface;
+use Platformsh\Client\Model\Accounts\AccountsApiResourceBase;
+use Platformsh\Client\PlatformClient;
 
 /**
  * Represents a Platform.sh subscription.
@@ -10,6 +12,8 @@ use GuzzleHttp\ClientInterface;
  * @property-read int    $id
  * @property-read string $status
  * @property-read string $owner
+ * @property-read array  $owner_info
+ * @property-read string $vendor
  * @property-read string $plan
  * @property-read int    $environments  Available environments.
  * @property-read int    $storage       Available storage (in MiB).
@@ -19,8 +23,12 @@ use GuzzleHttp\ClientInterface;
  * @property-read string $project_region
  * @property-read string $project_region_label
  * @property-read string $project_ui
+ * @property-read array  $project_options
+ * @property-read string $enterprise_tag
+ * @property-read array  $services
+ * @property-read string $support_tier
  */
-class Subscription extends ApiResourceBase
+class Subscription extends AccountsApiResourceBase
 {
 
     public static $availablePlans = ['development', 'standard', 'medium', 'large'];
@@ -34,21 +42,9 @@ class Subscription extends ApiResourceBase
     const STATUS_SUSPENDED = 'suspended';
     const STATUS_DELETED = 'deleted';
 
-    /**
-     * {@inheritdoc}
-     *
-     * @internal Use PlatformClient::createSubscription() to create a new subscription.
-     *
-     * @see \Platformsh\Client\PlatformClient::createSubscription()
-     *
-     * @return static
-     */
-    public static function create(array $body, $collectionUrl, ClientInterface $client)
-    {
-        $result = parent::create($body, $collectionUrl, $client);
-
-        return new Subscription($result->getData(), $collectionUrl, $client);
-    }
+    // @todo: Move these constants to methods, so that they can be documented in an appropriate interface.
+    const COLLECTION_NAME = 'subscriptions';
+    const COLLECTION_PATH = 'subscriptions';
 
     /**
      * Wait for the subscription's project to be provisioned.
@@ -126,14 +122,14 @@ class Subscription extends ApiResourceBase
 
     /**
      * Get the account for the project's owner.
-     *
-     * @return Account|false
      */
-    public function getOwner()
+    public function getOwner(): ?Account
     {
-        $uuid = $this->getProperty('owner');
-        $url = $this->makeAbsoluteUrl('/api/users', $this->getLink('project'));
-        return Account::get($uuid, $url, $this->client);
+        if (!$this->hasLink('owner')) {
+            throw new \BadMethodCallException('Access denied to the subscription owner resource.');
+        }
+
+        return $this->getLinkedResource('owner', Account::class);
     }
 
     /**
@@ -146,8 +142,8 @@ class Subscription extends ApiResourceBase
         if (!$this->hasLink('project') && !$this->isActive()) {
             throw new \BadMethodCallException('Inactive subscriptions do not have projects.');
         }
-        $url = $this->getLink('project');
-        return Project::get($url, null, $this->client);
+
+        return $this->getLinkedResource('project', Project::class);
     }
 
     /**
@@ -157,15 +153,6 @@ class Subscription extends ApiResourceBase
     {
         $data = isset($data['subscriptions'][0]) ? $data['subscriptions'][0] : $data;
         $this->data = $data;
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public static function wrapCollection(array $data, $baseUrl, ClientInterface $client)
-    {
-        $data = isset($data['subscriptions']) ? $data['subscriptions'] : [];
-        return parent::wrapCollection($data, $baseUrl, $client);
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace Platformsh\Client\Model;
 
 use GuzzleHttp\ClientInterface;
+use Platformsh\Client\Model\Accounts\AccountsApiResourceBase;
 
 /**
  * Represents a Platform.sh region.
@@ -14,8 +15,20 @@ use GuzzleHttp\ClientInterface;
  * @property-read string $zone
  * @property-read string $endpoint
  */
-class Region extends ApiResourceBase
+class Region extends AccountsApiResourceBase
 {
+    // @todo: Move these constants to methods, so that they can be documented in an appropriate interface.
+    const COLLECTION_NAME = 'regions';
+    const COLLECTION_PATH = 'regions';
+
+    /**
+     * Prevent deletion.
+     */
+    public function delete()
+    {
+        throw new \BadMethodCallException("Regions cannot be deleted.");
+    }
+
     /**
      * @inheritdoc
      */
@@ -25,16 +38,6 @@ class Region extends ApiResourceBase
         $data['available'] = !empty($data['available']);
         $data['private'] = !empty($data['private']);
         $this->data = $data;
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public static function wrapCollection(array $data, $baseUrl, ClientInterface $client)
-    {
-        $data = isset($data['regions']) ? $data['regions'] : [];
-
-        return parent::wrapCollection($data, $baseUrl, $client);
     }
 
     /**

@@ -5,6 +5,7 @@ namespace Platformsh\Client\Connection;
 use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Request;
 use League\OAuth2\Client\Grant\ClientCredentials;
 use League\OAuth2\Client\Grant\Password;
 use League\OAuth2\Client\Provider\AbstractProvider;
@@ -283,5 +284,81 @@ class Connector implements ConnectorInterface
         }
 
         return $this->client;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function sendToAccounts(string $resourcePath, string $method = 'get', array $options = []): array
+    {
+        return $this->sendToUri($this->getAccountsEndpoint().$resourcePath, $method, $options);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function sendToUri(string $uri, string $method = 'get', array $options = []): array
+    {
+        $response = null;
+        try {
+            $response = $this->getClient()->request($method, $uri, $options);
+            $body = $response->getBody()->getContents();
+            $data = [];
+            if ($body) {
+                $response->getBody()->seek(0);
+                $body = $response->getBody()->getContents();
+                $data = \GuzzleHttp\json_decode($body, true);
+            }
+
+            return (array)$data;
+        } catch (BadResponseException $e) {
+            throw ApiResponseException::create($e->getRequest(), $e->getResponse());
+        } catch (\InvalidArgumentException $e) {
+            throw ApiResponseException::create($request, $response);
+        }
+    }
+
+
+
+
+    /**
+     * @deprecated
+     */
+    public function send(string $resourcePath, string $method = 'get', array $options = []): array
+    {
+        return $this->sendToAccounts($resourcePath, $method, $options);
+    }
+
+    /**
+     * @deprecated
+     */
+    public function sendUri(string $uri, string $method = 'get', array $options = []): array
+    {
+        return $this->sendToUri($uri, $method, $options);
+    }
+
+    /**
+     * {@inheritdoc}
+     * @deprecated
+     */
+    public function sendRequest(Request $request, array $options = []): array
+    {
+        $response = null;
+        try {
+            $response = $this->getClient()->send($request, $options);
+            $body = $response->getBody()->getContents();
+            $data = [];
+            if ($body) {
+                $response->getBody()->seek(0);
+                $body = $response->getBody()->getContents();
+                $data = \GuzzleHttp\json_decode($body, true);
+            }
+
+            return (array) $data;
+        } catch (BadResponseException $e) {
+            throw ApiResponseException::create($e->getRequest(), $e->getResponse());
+        } catch (\InvalidArgumentException $e) {
+            throw ApiResponseException::create($request, $response);
+        }
     }
 }

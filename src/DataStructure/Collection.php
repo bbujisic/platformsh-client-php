@@ -1,0 +1,144 @@
+<?php
+
+namespace Platformsh\Client\DataStructure;
+
+use Platformsh\Client\PlatformClient;
+use Platformsh\Client\Query\QueryInterface;
+
+/**
+ * An iterable structure which lazy loads a new set of results
+ * once it reaches the end of the locally stored values.
+ */
+class Collection implements \Iterator, \Countable
+{
+
+    // Current position in the collection of items.
+    private $position = 0;
+    // The collection of items.
+    private $collection = [];
+
+
+    // Page management
+    private $currentPage = 1;
+    private $hasNextPage = true;
+    // Total number of results.
+    private $countRemote = 0;
+
+
+    // Resource object name.
+    private $resourceObjectName;
+    // Guzzle options.
+    private $options = [];
+    /** @var \Platformsh\Client\PlatformClient */
+    private $client;
+    // The uri of the collection.
+    private $uri;
+
+
+    /**
+     * Collection constructor.
+     *
+     * @param string         $resourceObjectName Class name of the objects to be instantiated and put into the collection.
+     * @param PlatformClient $client
+     * @param QueryInterface $query
+     */
+    public function __construct(string $resourceObjectName, PlatformClient $client, QueryInterface $query = null)
+    {
+        $this->client = $client;
+        $this->resourceObjectName = $resourceObjectName;
+        $this->uri = $this->client->getConnector()->getAccountsEndpoint().$resourceObjectName::COLLECTION_PATH;
+
+        if ($query) {
+            $this->options['query'] = $query->getParams();
+        }
+
+        $this->fetch(1);
+    }
+
+    protected function fetch($page = 1)
+    {
+        // Bail out early.
+        if (!$this->hasNextPage) {
+            return false;
+        }
+
+        $class = $this->resourceObjectName;
+        $options = $this->options;
+        $options['query']['page'] = $page;
+
+        $data = $this->client->getConnector()->sendToUri($this->uri, 'get', $options);
+
+        foreach ($data[$class::COLLECTION_NAME] as $resourceItem) {
+            $this->collection[] = new $class($resourceItem, $this->uri, $this->client);
+        }
+
+        $this->countRemote = $data['count'];
+        $this->hasNextPage = (isset($data['_links']['next']) ? true : false);
+        $this->currentPage = $page;
+
+        return true;
+    }
+
+
+    /**
+     * {@inheritdoc}
+     */
+    public function count(): int
+    {
+        return $this->countRemote;
+    }
+
+    /**
+     * Count locally available items.
+     */
+    public function countFetched(): int
+    {
+        return count($this->collection);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function rewind()
+    {
+        $this->position = 0;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function current()
+    {
+        return $this->collection[$this->position];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function key()
+    {
+        return $this->position;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function next()
+    {
+        ++$this->position;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function valid()
+    {
+        // If no items remain in collectiom, fetch a new batch.
+        if (!isset($this->collection[$this->position])) {
+            $this->fetch(++$this->currentPage);
+        }
+
+        return isset($this->collection[$this->position]);
+    }
+
+}

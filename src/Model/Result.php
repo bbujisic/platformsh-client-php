@@ -2,13 +2,16 @@
 
 namespace Platformsh\Client\Model;
 
-use GuzzleHttp\ClientInterface;
+use Platformsh\Client\PlatformClient;
 
 /**
  * A class wrapping the result of an API call.
  */
 class Result extends ApiResourceBase
 {
+
+    const COLLECTION_PATH = 'regions';
+
     protected $resourceClass;
 
     /**
@@ -16,7 +19,7 @@ class Result extends ApiResourceBase
      *
      * @param string $className
      */
-    public function __construct(array $data, $baseUrl, ClientInterface $client, $className)
+    public function __construct(array $data, $baseUrl, PlatformClient $client, $className)
     {
         parent::__construct($data, $baseUrl, $client, true);
         $this->setResourceClass($className);

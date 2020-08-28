@@ -3,6 +3,7 @@
 namespace Platformsh\Client\Model\Billing;
 
 use GuzzleHttp\ClientInterface;
+use Platformsh\Client\Model\Accounts\AccountsApiResourceBase;
 use Platformsh\Client\Model\ApiResourceBase;
 
 /**
@@ -16,18 +17,10 @@ use Platformsh\Client\Model\ApiResourceBase;
  * @property-read string $end           The end date of the record (ISO 8601).
  * @property-read string $status        The subscription status in this record.
  */
-class PlanRecord extends ApiResourceBase
+class PlanRecord extends AccountsApiResourceBase
 {
 
     const COLLECTION_NAME = 'plan';
-
-    /**
-     * @inheritdoc
-     */
-    public static function wrapCollection(array $data, $baseUrl, ClientInterface $client)
-    {
-        $data = isset($data[self::COLLECTION_NAME]) ? $data[self::COLLECTION_NAME] : [];
-        return parent::wrapCollection($data, $baseUrl, $client);
-    }
+    const COLLECTION_PATH = 'records/plan';
 
 }

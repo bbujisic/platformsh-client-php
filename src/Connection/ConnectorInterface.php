@@ -3,6 +3,7 @@
 namespace Platformsh\Client\Connection;
 
 use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Psr7\Request;
 use Platformsh\Client\Session\SessionInterface;
 
 interface ConnectorInterface
@@ -66,4 +67,30 @@ interface ConnectorInterface
      * @return string
      */
     public function getAccountsEndpoint();
+
+    /**
+     * Create and send a Guzzle request.
+     *
+     * Using this method allows exceptions to be standardized.
+     *
+     * @param   string  $resourcePath   Path to the resource.
+     * @param   string  $method         HTTP request method
+     * @param   array   $options        Guzzle options
+     *
+     * @return  array
+     */
+    public function sendToAccounts(string $resourcePath, string $method = 'get',array $options = []);
+
+    /**
+     * Send a Guzzle request.
+     *
+     * Using this method allows exceptions to be standardized.
+     *
+     * @param   Request $request    Guzzle Request object
+     * @param   array   $options    Guzzle options
+     *
+     * @return  array
+     */
+    public function sendToUri(string $uri, string $method = 'get', array $options = []);
+
 }

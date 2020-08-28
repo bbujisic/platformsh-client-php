@@ -2,17 +2,30 @@
 
 namespace Platformsh\Client\Model;
 
+use Platformsh\Client\Model\Accounts\AccountsApiResourceBase;
+
 /**
  * A user's SSH public key.
  *
  * @property-read string $title
  * @property-read int    $key_id
  * @property-read string $fingerprint
+ * @property-read string $value
  */
-class SshKey extends ApiResourceBase
+class SshKey extends AccountsApiResourceBase
 {
+    const COLLECTION_PATH = 'ssh_keys';
 
     protected static $required = ['value'];
+
+    protected static $allowedAlgorithms = [
+        'ssh-rsa',
+        'ssh-dsa',
+        'ssh-ed25519',
+        'ecdsa-sha2-nistp256',
+        'ecdsa-sha2-nistp384',
+        'ecdsa-sha2-nistp521',
+    ];
 
     /**
      * @inheritdoc
@@ -22,6 +35,7 @@ class SshKey extends ApiResourceBase
         if ($property === 'value' && !self::validatePublicKey($value)) {
             return ["The SSH key is invalid"];
         }
+
         return [];
     }
 
@@ -39,7 +53,7 @@ class SshKey extends ApiResourceBase
             return false;
         }
         list($type, $key) = explode(' ', $value, 3);
-        if (!in_array($type, ['ssh-rsa', 'ssh-dsa']) || base64_decode($key, true) === false) {
+        if (!in_array($type, static::$allowedAlgorithms) || base64_decode($key, true) === false) {
             return false;
         }
 

@@ -2,13 +2,14 @@
 
 namespace Platformsh\Client\Model;
 
-use GuzzleHttp\Client;
-use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\BadResponseException;
-use GuzzleHttp\Psr7\Request;
-use Psr\Http\Message\RequestInterface;
+use GuzzleHttp\Exception\RequestException;
+use Platformsh\Client\DataStructure\ApiCollection;
+use Platformsh\Client\PlatformClient;
+use Platformsh\Client\Query\QueryInterface;
 use Platformsh\Client\Exception\ApiResponseException;
 use Platformsh\Client\Exception\OperationUnavailableException;
+use Platformsh\Client\DataStructure\Collection;
 
 /**
  * The base class for API resources.
@@ -19,7 +20,7 @@ abstract class ApiResourceBase implements \ArrayAccess
     /** @var array */
     protected static $required = [];
 
-    /** @var ClientInterface */
+    /** @var PlatformClient */
     protected $client;
 
     /** @var string */
@@ -42,11 +43,11 @@ abstract class ApiResourceBase implements \ArrayAccess
      * @param bool            $full    Whether the data is a complete
      *                                 representation of the resource.
      */
-    public function __construct(array $data, $baseUrl = null, ClientInterface $client = null, $full = false)
+    public function __construct(array $data, string $baseUrl, PlatformClient $client, bool $full = false)
     {
         $this->setData($data);
-        $this->client = $client ?: new Client();
-        $this->baseUrl = (string) $baseUrl;
+        $this->client = $client;
+        $this->baseUrl = $baseUrl;
         $this->isFull = $full;
     }
 
@@ -85,7 +86,8 @@ abstract class ApiResourceBase implements \ArrayAccess
      *
      * @return bool
      */
-    public function __isset($name) {
+    public function __isset($name)
+    {
         return $this->hasProperty($name);
     }
 
@@ -153,104 +155,103 @@ abstract class ApiResourceBase implements \ArrayAccess
     /**
      * Get a resource by its ID.
      *
-     * @param string          $id            The ID of the resource, or the
-     *                                       full URL.
-     * @param string          $collectionUrl The URL of the collection.
-     * @param ClientInterface $client        A suitably configured Guzzle
-     *                                       client.
+     * @param PlatformClient $client A suitably configured Platform client.
+     * @param string|int     $uri    The ID of the resource.
      *
-     * @return static|false The resource object, or false if the resource is
-     *                      not found.
+     * @return static|null The resource object, or false if the resource is not found.
      */
-    public static function get($id, $collectionUrl = null, ClientInterface $client)
+    public static function getDirect(PlatformClient $client, $uri): ?ApiResourceBase
     {
         try {
-            $url = $collectionUrl ? rtrim($collectionUrl, '/') . '/' . urlencode($id) : $id;
-            $request = new Request('get', $url);
-            $data = self::send($request, $client);
+            $data = $client->getConnector()->sendToUri($uri);
 
-            return new static($data, $url, $client, true);
-        } catch (BadResponseException $e) {
-            $response = $e->getResponse();
-            if ($response && $response->getStatusCode() === 404) {
-                return false;
+            return new static($data, $uri, $client, true);
+        } catch (\Exception $e) {
+            // The API may throw either 404 (not found) or 422 (the requested entity id does not exist).
+            if (!in_array($e->getCode(), [404, 422])) {
+                throw $e;
             }
-            throw $e;
         }
+
+        return null;
+    }
+
+    /**
+     * Get a collection of resources.
+     *
+     * @param PlatformClient $client A suitably configured Platform client.
+     * @param QueryInterface $query  An instance of query interface. It will be used to build a guzzle query.
+     *
+     * @return Collection;
+     */
+    public static function getCollectionDirect(PlatformClient $client, $uri, QueryInterface $query = null)
+    {
+        $out = [];
+
+        $options = [];
+        if ($query) {
+            $options['query'] = $query->getParams();
+        }
+
+        if ($data = $client->getConnector()->sendToUri($uri, 'get', $options)) {
+            foreach ($data as $datum) {
+                $out[] = new static($datum, $uri, $client);
+            }
+        }
+
+        return $out;
     }
 
     /**
      * Create a resource.
      *
-     * @param array           $body
-     * @param string          $collectionUrl
-     * @param ClientInterface $client
+     * @param PlatformClient $client
+     * @param array          $body
+     * @param string         $uri If not provided, a default uri will be generated from entity collection path.
      *
      * @return Result
      */
-    public static function create(array $body, $collectionUrl, ClientInterface $client)
+    public static function create(PlatformClient $client, array $body, string $uri = null)
     {
         if ($errors = static::checkNew($body)) {
-            $message = "Cannot create resource due to validation error(s): " . implode('; ', $errors);
+            $message = "Cannot create resource due to validation error(s): ".implode('; ', $errors);
             throw new \InvalidArgumentException($message);
         }
 
-        $request = new Request('post', $collectionUrl, [], \GuzzleHttp\json_encode($body));
-        $data = self::send($request, $client);
+        $uri = ($uri ?: $client->getConnector()->getAccountsEndpoint().static::COLLECTION_PATH);
 
-        return new Result($data, $collectionUrl, $client, get_called_class());
-    }
-
-    /**
-     * Send a Guzzle request.
-     *
-     * Using this method allows exceptions to be standardized.
-     *
-     * @param RequestInterface $request
-     * @param ClientInterface  $client
-     * @param array            $options
-     *
-     * @internal
-     *
-     * @return array
-     */
-    public static function send(RequestInterface $request, ClientInterface $client, array $options = [])
-    {
-        $response = null;
-        try {
-            $response = $client->send($request, $options);
-            $body = $response->getBody()->getContents();
-            $data = [];
-            if ($body) {
-                $response->getBody()->seek(0);
-                $body = $response->getBody()->getContents();
-                $data = \GuzzleHttp\json_decode($body, true);
-            }
-
-            return (array) $data;
-        } catch (BadResponseException $e) {
-            throw ApiResponseException::create($e->getRequest(), $e->getResponse());
-        } catch (\InvalidArgumentException $e) {
-            throw ApiResponseException::create($request, $response);
-        }
-    }
-
-    /**
-     * A simple helper function to send an HTTP request.
-     *
-     * @param string $url
-     * @param string $method
-     * @param array  $options
-     *
-     * @return array
-     */
-    protected function sendRequest($url, $method = 'get', array $options = [])
-    {
-        return $this->send(
-          new Request($method, $url),
-          $this->client,
-          $options
+        $data = $client->getConnector()->sendToUri(
+            $uri,
+            'post',
+            [
+                'headers' => ['Content-Type' => 'application/json'],
+                'body' => \GuzzleHttp\json_encode($body),
+            ]
         );
+
+        return new Result($data, $uri, $client, get_called_class());
+    }
+
+    /**
+     * Get a subresource from a hal link.
+     */
+    protected function getLinkedResource(string $rel, string $class, $id = null): ?ApiResourceBase
+    {
+        $url = $this->getLink($rel).($id ? '/'.urlencode($id) : '');
+
+        return $class::getDirect($this->client, $url);
+    }
+
+    /**
+     * Get a subresource from a hal link.
+     *
+     * @return ApiResourceBase[]
+     */
+    protected function getLinkedResources(string $rel, string $class, QueryInterface $query = null): ?array
+    {
+        $url = $this->getLink($rel);
+
+        return $class::getCollectionDirect($this->client, $url, $query);
     }
 
     /**
@@ -274,11 +275,12 @@ abstract class ApiResourceBase implements \ArrayAccess
     {
         $errors = [];
         if ($missing = array_diff(static::getRequired(), array_keys($data))) {
-            $errors[] = 'Missing: ' . implode(', ', $missing);
+            $errors[] = 'Missing: '.implode(', ', $missing);
         }
         foreach ($data as $key => $value) {
             $errors += static::checkProperty($key, $value);
         }
+
         return $errors;
     }
 
@@ -293,56 +295,6 @@ abstract class ApiResourceBase implements \ArrayAccess
     protected static function checkProperty($property, $value)
     {
         return [];
-    }
-
-    /**
-     * Get a collection of resources.
-     *
-     * @param string          $url     The collection URL.
-     * @param int             $limit   A limit on the number of resources to
-     *                                 return.
-     * @param array           $options An array of additional Guzzle request
-     *                                 options.
-     * @param ClientInterface $client  A suitably configured Guzzle client.
-     *
-     * @return static[]
-     */
-    public static function getCollection($url, $limit = 0, array $options = [], ClientInterface $client)
-    {
-        // @todo uncomment this when the API implements a 'count' parameter
-        // if ($limit) {
-            // $options['query']['count'] = $limit;
-        // }
-        $request = new Request('get', $url);
-        $data = self::send($request, $client, $options);
-
-        // @todo remove this when the API implements a 'count' parameter
-        if ($limit) {
-            $data = array_slice($data, 0, $limit);
-        }
-
-        return static::wrapCollection($data, $url, $client);
-    }
-
-    /**
-     * Create an array of resource instances from a collection's JSON data.
-     *
-     * @param array           $data    The deserialized JSON from the
-     *                                 collection (i.e. a list of resources,
-     *                                 each of which is an array of data).
-     * @param string          $baseUrl The URL to the collection.
-     * @param ClientInterface $client  A suitably configured Guzzle client.
-     *
-     * @return static[]
-     */
-    public static function wrapCollection(array $data, $baseUrl, ClientInterface $client)
-    {
-        $resources = [];
-        foreach ($data as $item) {
-            $resources[] = new static($item, $baseUrl, $client);
-        }
-
-        return $resources;
     }
 
     /**
@@ -363,8 +315,7 @@ abstract class ApiResourceBase implements \ArrayAccess
         if (!empty($body)) {
             $options['json'] = $body;
         }
-        $request= new Request($method, $this->getLink("#$op"));
-        $data = $this->send($request, $this->client, $options);
+        $data = $this->client->getConnector()->sendToUri($this->getLink("#$op"), $method, $options);
 
         return new Result($data, $this->baseUrl, $this->client, get_called_class());
     }
@@ -393,7 +344,7 @@ abstract class ApiResourceBase implements \ArrayAccess
      * Check whether a property exists in the resource.
      *
      * @param string $property
-     * @param bool $lazyLoad
+     * @param bool   $lazyLoad
      *
      * @return bool
      */
@@ -429,6 +380,7 @@ abstract class ApiResourceBase implements \ArrayAccess
             if ($required) {
                 throw new \InvalidArgumentException("Property not found: $property");
             }
+
             return null;
         }
 
@@ -442,7 +394,7 @@ abstract class ApiResourceBase implements \ArrayAccess
      */
     public function delete()
     {
-        $data = $this->sendRequest($this->getUri(), 'delete');
+        $data = $this->client->getConnector()->sendToUri($this->getUri(), 'delete');
 
         return new Result($data, $this->getUri(), $this->client, get_called_class());
     }
@@ -456,10 +408,11 @@ abstract class ApiResourceBase implements \ArrayAccess
      *
      * @return Result
      */
+    // @todo: probably broken
     public function update(array $values)
     {
         if ($errors = $this->checkUpdate($values)) {
-            $message = "Cannot update resource due to validation error(s): " . implode('; ', $errors);
+            $message = "Cannot update resource due to validation error(s): ".implode('; ', $errors);
             throw new \InvalidArgumentException($message);
         }
         $data = $this->runOperation('edit', 'patch', $values)->getData();
@@ -484,6 +437,7 @@ abstract class ApiResourceBase implements \ArrayAccess
         foreach ($values as $key => $value) {
             $errors += static::checkProperty($key, $value);
         }
+
         return $errors;
     }
 
@@ -506,8 +460,7 @@ abstract class ApiResourceBase implements \ArrayAccess
      */
     public function refresh(array $options = [])
     {
-        $request = new Request('get', $this->getUri());
-        $this->setData(self::send($request, $this->client, $options));
+        $this->setData($this->client->getConnector()->sendToUri($this->getUri(), 'get', $options));
         $this->isFull = true;
     }
 
@@ -560,6 +513,7 @@ abstract class ApiResourceBase implements \ArrayAccess
         if ($absolute && strpos($url, '//') === false) {
             $url = $this->makeAbsoluteUrl($url);
         }
+
         return $url;
     }
 
@@ -590,6 +544,7 @@ abstract class ApiResourceBase implements \ArrayAccess
     public function getPropertyNames()
     {
         $keys = array_filter(array_keys($this->data), [$this, 'isProperty']);
+
         return $keys;
     }
 
