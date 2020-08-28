@@ -15,6 +15,7 @@ use Platformsh\Client\Model\Result;
 use Platformsh\Client\Model\SetupOptions;
 use Platformsh\Client\Model\SshKey;
 use Platformsh\Client\Model\Subscription;
+use Platformsh\Client\Model\Trial;
 use Platformsh\Client\Model\User;
 
 class PlatformClient
@@ -459,5 +460,29 @@ class PlatformClient
             $id = $this->getAccountInfo()['id'];
         }
         return User::get($id, $this->connector->getApiUrl() . '/users', $this->connector->getClient());
+    }
+
+    /**
+     * Get a list of your Platform.sh trials.
+     *
+     * @return Trial[]
+     */
+    public function getTrials()
+    {
+        $url = $this->apiUrl() . '/trials';
+        return Trial::getCollection($url, 0, ['query'=>['page'=>2]], $this->connector->getClient());
+    }
+
+    /**
+     * Get a subscription by its ID.
+     *
+     * @param string|int $id
+     *
+     * @return Trial|false
+     */
+    public function getTrial($id)
+    {
+        $url = $this->apiUrl() . '/trials';
+        return Trial::get($id, $url, $this->connector->getClient());
     }
 }
