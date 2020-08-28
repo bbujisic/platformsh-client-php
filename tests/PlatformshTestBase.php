@@ -42,6 +42,7 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
         $this->mockSubscriptionAPIs();
         $this->mockRegionAPI();
         $this->mockBillingAPI();
+        $this->mockTrialsAPI();
 
         $this->client = new PlatformClient($this->connectorProphet->reveal());
 
@@ -301,4 +302,32 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
         $this->connectorProphet->sendToUri("https://accounts.example.com/api/records/usage", 'get', Argument::cetera())->willReturn($this->data['records_usage']);
     }
 
+    private function mockTrialsAPI() {
+        $this->data['trials'] = [
+            'count' => 1,
+            'trials' => [
+                [
+                    'id' => '111',
+                    'owner' => 'my_uuid',
+                    'model' => 'general',
+                    'status' => 'Created',
+                    'spend' => [
+                        'formatted' => '30 €',
+                        'amount' => 30,
+                        'currency_code' => 'EUR'
+                    ]
+                ],
+            ],
+            '_links' => [
+                'self' => [
+                    'title' => 'Self',
+                    'href' => 'https://accounts.example.com/api/v1/trials',
+                ],
+            ],
+        ];
+
+        $this->connectorProphet->sendToUri("https://accounts.example.com/api/trials", 'get', Argument::cetera())->willReturn($this->data['trials']);
+        $this->connectorProphet->sendToUri("https://accounts.example.com/api/trials/111")->willReturn($this->data['trials']['trials'][0]);
+        $this->connectorProphet->sendToUri('https://accounts.example.com/api/trials/123')->willThrow(new \Exception('not found', 404));
+    }
 }
