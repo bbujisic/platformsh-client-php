@@ -18,6 +18,7 @@ use Platformsh\Client\Model\Subscription;
 use Platformsh\Client\Query\PlanRecordQuery;
 use Platformsh\Client\Query\RegionQuery;
 use Platformsh\Client\Query\SubscriptionQuery;
+use Platformsh\Client\Query\TrialQuery;
 use Platformsh\Client\Query\UsageRecordQuery;
 use Platformsh\Client\Model\Trial;
 
@@ -296,19 +297,21 @@ class PlatformClient
     }
 
     /**
-     * Get a list of your Platform.sh trials.
+     * Get a list of Platform.sh trials.
      *
-     * @return Trial[]
+     * @param TrialQuery|null $query
+     *
+     * @return Collection
      */
-    public function getTrials()
+    public function getTrials(TrialQuery $query = null)
     {
-        return Trial::getCollection($this);
+        return Trial::getCollection($this, $query);
     }
 
     /**
-     * Get a subscription by its ID.
+     * Get a trial by its ID.
      *
-     * @param string|int $id
+     * @param int $id
      *
      * @return Trial|false
      */

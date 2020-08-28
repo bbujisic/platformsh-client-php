@@ -49,7 +49,7 @@ abstract class Query implements QueryInterface
 
         $filters = array_map(
             function ($value) {
-                return is_array($value) ? ['value' => $value, 'operator' => 'IN'] : $value;
+                return (is_array($value) && !isset($value['value'])) ? ['value' => $value, 'operator' => 'IN'] : $value;
             },
             $filters
         );
