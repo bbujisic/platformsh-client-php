@@ -43,6 +43,7 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
         $this->mockRegionAPI();
         $this->mockBillingAPI();
         $this->mockTrialsAPI();
+        $this->mockTransactionsAPI();
 
         $this->client = new PlatformClient($this->connectorProphet->reveal());
 
@@ -329,5 +330,34 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
         $this->connectorProphet->sendToUri("https://accounts.example.com/api/trials", 'get', Argument::cetera())->willReturn($this->data['trials']);
         $this->connectorProphet->sendToUri("https://accounts.example.com/api/trials/111")->willReturn($this->data['trials']['trials'][0]);
         $this->connectorProphet->sendToUri('https://accounts.example.com/api/trials/123')->willThrow(new \Exception('not found', 404));
+    }
+
+    private function mockTransactionsAPI() {
+        $this->data['transactions'] = [
+            'count' => 1,
+            'transactions' => [
+                [
+                    'id' => '111',
+                    //'owner' => 'my_uuid',
+                    'order_id' => '1111',
+                    'payment_method' => 'commerce_stripe',
+                    'message' => 'A message',
+                    'status' => 'success',
+                    'remote_status' => 'success',
+                    'amount' => '100.00',
+                    'currency' => 'EUR',
+                ],
+            ],
+            '_links' => [
+                'self' => [
+                    'title' => 'Self',
+                    'href' => 'https://accounts.example.com/api/v1/transactions',
+                ],
+            ],
+        ];
+
+        $this->connectorProphet->sendToUri("https://accounts.example.com/api/transactions", 'get', Argument::cetera())->willReturn($this->data['transactions']);
+        $this->connectorProphet->sendToUri("https://accounts.example.com/api/transactions/111")->willReturn($this->data['transactions']['transactions'][0]);
+        $this->connectorProphet->sendToUri('https://accounts.example.com/api/transactions/123')->willThrow(new \Exception('not found', 404));
     }
 }

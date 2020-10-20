@@ -37,7 +37,7 @@ class TrialTest extends PlatformshTestBase
             'Requesting multiple trials returns an instance of Collection class'
         );
         foreach ($trials as $trial) {
-            $this->assertInstanceOf(Trial::class, $trial, 'The collection elements are instances of a Region class');
+            $this->assertInstanceOf(Trial::class, $trial, 'The collection elements are instances of a Trial class');
         }
     }
 

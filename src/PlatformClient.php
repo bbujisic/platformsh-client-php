@@ -19,8 +19,10 @@ use Platformsh\Client\Query\PlanRecordQuery;
 use Platformsh\Client\Query\RegionQuery;
 use Platformsh\Client\Query\SubscriptionQuery;
 use Platformsh\Client\Query\TrialQuery;
+use Platformsh\Client\Query\TransactionQuery;
 use Platformsh\Client\Query\UsageRecordQuery;
 use Platformsh\Client\Model\Trial;
+use Platformsh\Client\Model\Transaction;
 
 class PlatformClient
 {
@@ -319,5 +321,31 @@ class PlatformClient
     {
         return Trial::get($this, $id);
     }
+
+    /**
+     * Get a list of Platform.sh transactions.
+     *
+     * @param TransactionQuery|null $query
+     *
+     * @return Collection
+     */
+    public function getTransactions(TransactionQuery $query = null)
+    {
+        return Transaction::getCollection($this, $query);
+    }
+
+    /**
+     * Get a transaction by its ID.
+     *
+     * @param int $id
+     *
+     * @return Transaction|false
+     */
+    public function getTransaction($id)
+    {
+        return Transaction::get($this, $id);
+    }
+
+
 
 }
