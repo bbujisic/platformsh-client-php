@@ -338,7 +338,7 @@ abstract class PlatformshTestBase extends \PHPUnit\Framework\TestCase
             'transactions' => [
                 [
                     'id' => '111',
-                    //'owner' => 'my_uuid',
+                    'owner' => 'my_uuid',
                     'order_id' => '1111',
                     'payment_method' => 'commerce_stripe',
                     'message' => 'A message',

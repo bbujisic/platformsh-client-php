@@ -8,6 +8,7 @@ use Platformsh\Client\Model\Accounts\AccountsApiResourceBase;
  * Represents a Platform.sh transaction.
  *
  * @property-read int    $id
+ * @property-read string $owner
  * @property-read int    $order_id
  * @property-read string $payment_method
  * @property-read string $message
