@@ -45,7 +45,7 @@ class TransactionTest extends PlatformshTestBase
     {
         $data = $this->data['transactions']['transactions'][0];
         $this->assertEquals($data['id'], $this->transaction->id, 'Transaction ID getter works');
-        $this->assertEquals($data['owner'], $this->transaction->owner, 'Trial owner getter works');
+        $this->assertEquals($data['owner'], $this->transaction->owner, 'Transaction owner getter works');
         $this->assertEquals($data['amount'], $this->transaction['amount'], 'Transaction spend getter works');
 
     }
